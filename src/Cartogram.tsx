@@ -17,7 +17,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [geoData, setGeoData] = useState<GeoJSONType[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [infoOpen, setInfoOpen] = useState(false); // état de la box info
+  const [infoOpen, setInfoOpen] = useState(false);
 
   /** 🔹 Normalise le GeoJSON pour n’avoir que des Polygons */
   const normalizeGeoJSON = (geo: GeoJSONType) => {
@@ -64,16 +64,14 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
 
     const svg = d3.select(svgRef.current);
     const tooltip = d3.select(tooltipRef.current);
-    svg.selectAll("*").remove(); // Nettoie le SVG avant de redessiner
+    svg.selectAll("*").remove();
 
     const width = svgRef.current?.clientWidth || window.innerWidth;
     const height = svgRef.current?.clientHeight || window.innerHeight;
 
-    // --- Projection FIXE sur la première carte ---
     const projection = geoBertin1953().fitSize([width, height], geoData[0]);
     const path = d3.geoPath().projection(projection);
 
-    // --- Graticule FIXE ---
     const graticule = d3.geoGraticule();
     svg.append("path")
       .datum(graticule())
@@ -83,21 +81,18 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
       .attr("stroke-dasharray", "2,2")
       .attr("d", path as any);
 
-    // --- 🔹 Calcule des ratios et classes par QUANTILES ---
     const values = geoData[currentIndex].features
       .map((f: any) => f.properties.current / f.properties.POP_EST)
       .filter((v: number) => !isNaN(v) && isFinite(v));
 
     const nbClasses = 5;
-
-    // --- 🎨 Palette personnalisée (ordre croissant) ---
     const colorScale = d3.scaleQuantile<string>()
       .domain(values)
       .range(["#feebe9ff", "#fccfcaff", "#faaea6ff", "#f38375", "#ef6351"]);
 
-    const breaks = colorScale.quantiles(); // bornes des classes
+    const breaks = colorScale.quantiles();
 
-    // --- 🔹 Dessin des pays ---
+    // --- 🔹 Dessin des pays avec tooltip conditionnel pour la France ---
     svg.selectAll("path.geo")
       .data(geoData[currentIndex].features)
       .join("path")
@@ -109,7 +104,6 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
       })
       .attr("stroke", "white")
       .attr("stroke-width", 1)
-      // --- Tooltip + surbrillance ---
       .on("mouseover", function (_: any, d: any) {
         const p = d.properties;
         const name = p.NAME_FR || p.NAMEfr || "Inconnu";
@@ -122,14 +116,25 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
           .attr("stroke-width", 2)
           .attr("fill-opacity", 0.4);
 
-        tooltip
-          .style("display", "block")
-          .html(`
-             <span style="font-size:16px; color: #ef6351; font-weight:bold;">${name}</span><br/>
-            Mentions dans la presse : <strong>${current.toLocaleString()}</strong><br/>
-            Population : <strong>${pop.toLocaleString()}</strong><br/>
-            Nombre de mentions par million d'habitant : <strong>${(ratio * 1e6).toFixed(2)}</strong> / 1M hab.
-          `);
+        if (name.toLowerCase().includes("france")) {
+          tooltip
+            .style("display", "block")
+            .html(`
+              <span style="font-size:16px; color: #ef6351; font-weight:bold;">${name}</span><br/>
+              Mentions dans la presse : <strong>Non renseigné</strong><br/>
+              Population : <strong>${pop.toLocaleString()}</strong><br/>
+              Nombre de mentions par million d'habitant : <strong>Non renseigné</strong>
+            `);
+        } else {
+          tooltip
+            .style("display", "block")
+            .html(`
+              <span style="font-size:16px; color: #ef6351; font-weight:bold;">${name}</span><br/>
+              Mentions dans la presse : <strong>${current.toLocaleString()}</strong><br/>
+              Population : <strong>${pop.toLocaleString()}</strong><br/>
+              Nombre de mentions par million d'habitant : <strong>${(ratio * 1e6).toFixed(2)}</strong> / 1M hab.
+            `);
+        }
       })
       .on("mousemove", event => {
         tooltip
@@ -148,78 +153,61 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
         tooltip.style("display", "none");
       });
 
-   // --- 🔹 Légende responsive avec interligne constant ---
-const legendWidth = width * 0.15;
-const legendHeight = height * 0.015;
+    // --- 🔹 Légende responsive ---
+    const legendWidth = width * 0.15;
+    const legendHeight = height * 0.015;
+    const legendX = width * 0.8;
+    const legendY = height * 0.06;
 
-// Placement proportionnel à l'écran
-let legendX = width * 0.8; 
-const legendY = height * 0.06;
+    const titleLines = [
+      "Nombre de mentions dans la presse",
+      "par millions d'habitant"
+    ];
+    const fontSizeTitle = Math.max(14, height * 0.014);
+    const lineHeight = 1.3;
 
-const titleLines = [
-  "Nombre de mentions dans la presse",
-  "par millions d'habitant"
-];
+    const legend = svg.append("g").attr("transform", `translate(${legendX}, ${legendY})`);
 
-const fontSizeTitle = Math.max(14, height * 0.014);
-const lineHeight = 1.3; // interligne constant = 1.3 * fontSizeTitle
+    legend.selectAll("text.title")
+      .data(titleLines)
+      .join("text")
+      .attr("class", "title")
+      .attr("x", 0)
+      .attr("y", (_, i) => -lineHeight * fontSizeTitle + i * fontSizeTitle * lineHeight)
+      .attr("font-size", fontSizeTitle)
+      .attr("fill", "#666")
+      .text(d => d);
 
-// Calcul largeur max du texte
-const maxTextWidth = d3.max(titleLines, line => {
-  const tempText = svg.append("text").attr("font-size", fontSizeTitle).text(line);
-  const w = (tempText.node() as SVGTextElement).getBBox().width;
-  tempText.remove();
-  return w;
-}) ?? 0;
+    const legendData = d3.range(nbClasses).map(i => ({
+      color: colorScale.range()[i]
+    }));
 
-// Ajustement de legendX pour ne pas dépasser l'écran
-legendX = Math.min(legendX, width - maxTextWidth - width * 0.01);
+    legend.selectAll("rect")
+      .data(legendData)
+      .join("rect")
+      .attr("x", (_, i) => i * (legendWidth / nbClasses))
+      .attr("y", legendHeight * 0.3)
+      .attr("width", legendWidth / nbClasses)
+      .attr("height", legendHeight)
+      .attr("fill", d => d.color)
+      .attr("stroke", "#fff");
 
-const legend = svg.append("g").attr("transform", `translate(${legendX}, ${legendY})`);
-
-// Titre avec interligne constant
-legend.selectAll("text.title")
-  .data(titleLines)
-  .join("text")
-  .attr("class", "title")
-  .attr("x", 0)
-  .attr("y", (_, i) => -lineHeight * fontSizeTitle + i * fontSizeTitle * lineHeight)
-  .attr("font-size", fontSizeTitle)
-  .attr("fill", "#666")
-  .text(d => d);
-
-const legendData = d3.range(nbClasses).map(i => ({
-  color: colorScale.range()[i]
-}));
-
-legend.selectAll("rect")
-  .data(legendData)
-  .join("rect")
-  .attr("x", (_, i) => i * (legendWidth / nbClasses))
-  .attr("y", legendHeight * 0.3)
-  .attr("width", legendWidth / nbClasses)
-  .attr("height", legendHeight)
-  .attr("fill", d => d.color)
-  .attr("stroke", "#fff");
-
-const limits = [d3.min(values)!, ...breaks];
-legend.selectAll("text.value")
-  .data(limits)
-  .join("text")
-  .attr("class", "value")
-  .attr("x", (_, i) => i * (legendWidth / nbClasses))
-  .attr("y", legendHeight + height * 0.025)
-  .attr("font-size", Math.max(12, height * 0.012))
-  .attr("fill", "#666")
-  .attr("text-anchor", "start")
-  .text((d, i) => {
-    const value = Math.round(Number(d) * 1e6).toLocaleString("fr-FR");
-    if (i === 0) return value;
-    if (i === limits.length - 1) return `${value} et supérieur`;
-    return value;
-  });
-
-
+    const limits = [d3.min(values)!, ...breaks];
+    legend.selectAll("text.value")
+      .data(limits)
+      .join("text")
+      .attr("class", "value")
+      .attr("x", (_, i) => i * (legendWidth / nbClasses))
+      .attr("y", legendHeight + height * 0.025)
+      .attr("font-size", Math.max(12, height * 0.012))
+      .attr("fill", "#666")
+      .attr("text-anchor", "start")
+      .text((d, i) => {
+        const value = Math.round(Number(d) * 1e6).toLocaleString("fr-FR");
+        if (i === 0) return value;
+        if (i === limits.length - 1) return `${value} et supérieur`;
+        return value;
+      });
   };
 
   /** 🔹 Redessine à chaque changement ou redimensionnement */
@@ -273,6 +261,7 @@ legend.selectAll("text.value")
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <svg ref={svgRef} style={{ width: "100%", height: "100%" }} />
+
       <div
         ref={tooltipRef}
         style={{
@@ -324,7 +313,25 @@ legend.selectAll("text.value")
         </Collapse>
       </Box>
 
-      {/* Bouton MapToggle en haut à droite */}
+      {/* Box source en bas à gauche */}
+      <Box
+        sx={{
+          position: "fixed",
+          bottom: 20,
+          left: 20,
+          bgcolor: "white",
+          borderRadius: 2,
+          boxShadow: 3,
+          p: 1,
+          zIndex: 1000,
+        }}
+      >
+        <Typography variant="body2" color="textSecondary">
+          Source : FOCUS 2030
+        </Typography>
+      </Box>
+
+      {/* Bouton MapToggle en haut à gauche */}
       <div
         style={{
           position: "fixed",
