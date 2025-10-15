@@ -1,7 +1,10 @@
 import React, { useEffect } from "react";
 import Cartogram from "./Cartogram";
 
-const geoUrls = ["/world_def.geojson", "/Cartogram_m.geojson"];
+const geoUrls = [
+  "https://dl.dropboxusercontent.com/scl/fi/7ausjtl053qkk8f1jn348/world_def.geojson?rlkey=mi46tk5qf69p43s2xpj4bg1sj",
+  "https://dl.dropboxusercontent.com/scl/fi/cfm4ro6h9bj1zta0bn6km/Cartogram_m.geojson?rlkey=s01n6chbu2mbq8yggyi1jpybj",
+];
 
 const App: React.FC = () => {
   // Bloque le scroll global
