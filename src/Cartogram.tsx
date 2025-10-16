@@ -3,8 +3,8 @@ import * as d3 from "d3";
 import * as flubber from "flubber";
 import { geoBertin1953 } from "d3-geo-projection";
 import MapToggle from "./MapToggle";
-import { Box, IconButton, Collapse, Typography } from "@mui/material";
-import InfoIcon from "@mui/icons-material/Info";
+import { Box, Typography } from "@mui/material";
+
 
 type GeoJSONType = any;
 
@@ -17,7 +17,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [geoData, setGeoData] = useState<GeoJSONType[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [infoOpen, setInfoOpen] = useState(false);
+
 
   /** 🔹 Normalise le GeoJSON pour n’avoir que des Polygons */
   const normalizeGeoJSON = (geo: GeoJSONType) => {
@@ -69,17 +69,30 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
     const width = svgRef.current?.clientWidth || window.innerWidth;
     const height = svgRef.current?.clientHeight || window.innerHeight;
 
-    const projection = geoBertin1953().fitSize([width, height], geoData[0]);
+    // ✅ Projection principale
+    const projection = geoBertin1953().fitExtent(
+      [[width * 0.02, height * 0.02], [width * 0.98, height * 0.98]],
+      geoData[currentIndex]
+    );
+
     const path = d3.geoPath().projection(projection);
 
-    const graticule = d3.geoGraticule();
+    // ✅ Graticule FIXE (défini une seule fois, ne bouge pas lors du changement de carte)
+    const graticule = d3.geoGraticule10();
+    const graticulePath = d3.geoPath().projection(
+      geoBertin1953().fitExtent(
+        [[width * 0.02, height * 0.02], [width * 0.98, height * 0.98]],
+        geoData[0] // graticule basé sur la carte originale
+      )
+    );
+
     svg.append("path")
-      .datum(graticule())
+      .datum(graticule)
       .attr("fill", "none")
       .attr("stroke", "#ccc")
       .attr("stroke-width", 0.5)
       .attr("stroke-dasharray", "2,2")
-      .attr("d", path as any);
+      .attr("d", graticulePath as any);
 
     const values = geoData[currentIndex].features
       .map((f: any) => f.properties.current / f.properties.POP_EST)
@@ -88,11 +101,10 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
     const nbClasses = 5;
     const colorScale = d3.scaleQuantile<string>()
       .domain(values)
-      .range(["#feebe9ff", "#fccfcaff", "#faaea6ff", "#f38375", "#ef6351"]);
+      .range(["#feebe9ff", "#fccfcaff", "#faaea6ff", "#f6998cff", "#f27c6cff"]);
 
     const breaks = colorScale.quantiles();
 
-    // --- 🔹 Dessin des pays avec tooltip conditionnel pour la France ---
     svg.selectAll("path.geo")
       .data(geoData[currentIndex].features)
       .join("path")
@@ -153,64 +165,96 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
         tooltip.style("display", "none");
       });
 
-    // --- 🔹 Légende responsive ---
-    const legendWidth = width * 0.15;
-    const legendHeight = height * 0.015;
-    const legendX = width * 0.8;
-    const legendY = height * 0.06;
+/// 🔹 Légende responsive
+const legendWidth = width * 0.15;
+const legendHeight = height * 0.015;
 
-    const titleLines = [
-      "Nombre de mentions dans la presse",
-      "par millions d'habitant"
-    ];
-    const fontSizeTitle = Math.max(14, height * 0.014);
-    const lineHeight = 1.3;
+const titleLines = [
+  "Nombre de mentions dans la presse",
+  "par millions d'habitant"
+];
+const fontSizeTitle = Math.max(14, height * 0.014);
+const lineHeight = 1.3;
 
-    const legend = svg.append("g").attr("transform", `translate(${legendX}, ${legendY})`);
+// Estimation largeur texte
+const approxTextWidth = Math.max(...titleLines.map(d => d.length)) * fontSizeTitle * 0.6;
 
-    legend.selectAll("text.title")
-      .data(titleLines)
-      .join("text")
-      .attr("class", "title")
-      .attr("x", 0)
-      .attr("y", (_, i) => -lineHeight * fontSizeTitle + i * fontSizeTitle * lineHeight)
-      .attr("font-size", fontSizeTitle)
-      .attr("fill", "#666")
-      .text(d => d);
+// Largeur totale de la légende
+const totalLegendWidth = Math.max(legendWidth, approxTextWidth);
 
-    const legendData = d3.range(nbClasses).map(i => ({
-      color: colorScale.range()[i]
-    }));
+// Position X responsive
+let legendX = width * 0.8;
+if (legendX + totalLegendWidth > width - width * 0.01) {
+  legendX = width - totalLegendWidth - width * 0.01;
+}
+legendX = Math.max(legendX, width * 0.02); // ne pas dépasser à gauche
 
-    legend.selectAll("rect")
-      .data(legendData)
-      .join("rect")
-      .attr("x", (_, i) => i * (legendWidth / nbClasses))
-      .attr("y", legendHeight * 0.3)
-      .attr("width", legendWidth / nbClasses)
-      .attr("height", legendHeight)
-      .attr("fill", d => d.color)
-      .attr("stroke", "#fff");
+// Position Y responsive avec plus de marge si la fenêtre est petite
+const minTopMargin = 0.03; // marge par défaut
+const extraTopMargin = Math.min(0.1, 0.1 * (350 / height)); // augmente quand la hauteur diminue
+const legendY = height * (minTopMargin + extraTopMargin);
 
-    const limits = [d3.min(values)!, ...breaks];
-    legend.selectAll("text.value")
-      .data(limits)
-      .join("text")
-      .attr("class", "value")
-      .attr("x", (_, i) => i * (legendWidth / nbClasses))
-      .attr("y", legendHeight + height * 0.025)
-      .attr("font-size", Math.max(12, height * 0.012))
-      .attr("fill", "#666")
-      .attr("text-anchor", "start")
-      .text((d, i) => {
-        const value = Math.round(Number(d) * 1e6).toLocaleString("fr-FR");
-        if (i === 0) return value;
-        if (i === limits.length - 1) return `${value} et supérieur`;
-        return value;
-      });
+const legend = svg.append("g").attr("transform", `translate(${legendX}, ${legendY})`);
+
+// 🔹 Titres
+legend.selectAll("text.title")
+  .data(titleLines)
+  .join("text")
+  .attr("class", "title")
+  .attr("x", 0)
+  .attr("y", (_, i) => -lineHeight * fontSizeTitle + i * fontSizeTitle * lineHeight)
+  .attr("font-size", fontSizeTitle)
+  .attr("fill", "#666")
+  .text(d => d);
+
+// 🔹 Gap entre titre et rectangles adaptatif
+const minTitleToLegendGap = 12; // gap minimal en pixels
+const maxTitleToLegendGap = 25; // gap maximal en pixels
+// Calcul adaptatif selon la hauteur de la fenêtre
+const titleToLegendGap = Math.min(maxTitleToLegendGap, Math.max(minTitleToLegendGap, height * 0.02));
+
+
+// Rectangles de la légende
+const legendData = d3.range(nbClasses).map(i => ({
+  color: colorScale.range()[i]
+}));
+
+legend.selectAll("rect")
+  .data(legendData)
+  .join("rect")
+  .attr("x", (_, i) => i * (legendWidth / nbClasses))
+  .attr("y", titleToLegendGap)
+  .attr("width", legendWidth / nbClasses)
+  .attr("height", legendHeight)
+  .attr("fill", d => d.color)
+  .attr("stroke", "#fff");
+
+// 🔹 Gap minimum entre rectangles et texte des valeurs
+const minLegendToTextGap = 10; // en pixels
+const legendToTextGap = Math.max(minLegendToTextGap, height * 0.015);
+
+// Texte des valeurs
+const limits = [d3.min(values)!, ...breaks];
+legend.selectAll("text.value")
+  .data(limits)
+  .join("text")
+  .attr("class", "value")
+  .attr("x", (_, i) => i * (legendWidth / nbClasses))
+  .attr("y", titleToLegendGap + legendHeight + legendToTextGap)
+  .attr("font-size", Math.max(12, height * 0.012))
+  .attr("fill", "#666")
+  .attr("text-anchor", "start")
+  .text((d, i) => {
+    const value = Math.round(Number(d) * 1e6).toLocaleString("fr-FR");
+    if (i === 0) return value;
+    if (i === limits.length - 1) return `${value} et supérieur`;
+    return value;
+  });
+
+
+
   };
 
-  /** 🔹 Redessine à chaque changement ou redimensionnement */
   useEffect(() => {
     drawMap();
     const handleResize = () => drawMap();
@@ -218,14 +262,18 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
     return () => window.removeEventListener("resize", handleResize);
   }, [geoData, currentIndex]);
 
-  /** 🔹 Animation fluide entre cartes avec flubber */
+  /** 🔹 Animation fluide entre cartes */
   const changeMap = (index: number) => {
     if (geoData.length === 0 || index === currentIndex) return;
 
     const svg = d3.select(svgRef.current);
     const width = svgRef.current?.clientWidth || window.innerWidth;
     const height = svgRef.current?.clientHeight || window.innerHeight;
-    const projection = geoBertin1953().fitSize([width, height], geoData[0]);
+
+    const projection = geoBertin1953().fitExtent(
+      [[width * 0.02, height * 0.02], [width * 0.98, height * 0.98]],
+      geoData[index]
+    );
     const path = d3.geoPath().projection(projection);
 
     const fromFeatures = geoData[currentIndex].features;
@@ -251,7 +299,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
       .join("path")
       .attr("class", "geo")
       .transition()
-      .duration(1500)
+      .duration(1000)
       .attrTween("d", (_, i) => flubber.interpolate(fromPaths[i], toPaths[i]));
 
     setTimeout(() => setCurrentIndex(index), 1500);
@@ -280,38 +328,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
         }}
       />
 
-      {/* Box MUI d'information en bas à droite */}
-      <Box
-        sx={{
-          position: "fixed",
-          bottom: 20,
-          right: 20,
-          width: "15vw",
-          minWidth: "200px",
-          bgcolor: "white",
-          borderRadius: 2,
-          boxShadow: 3,
-          p: 1,
-          zIndex: 1000,
-        }}
-      >
-        <Box display="flex" alignItems="center" justifyContent="space-between">
-          <Box display="flex" alignItems="center" gap={0.5}>
-            <InfoIcon fontSize="small" color="action" />
-            <Typography variant="subtitle2" color="textSecondary">
-              Information sur le cartogram
-            </Typography>
-          </Box>
-          <IconButton size="small" onClick={() => setInfoOpen(prev => !prev)}>
-            {infoOpen ? "−" : "+"}
-          </IconButton>
-        </Box>
-        <Collapse in={infoOpen}>
-          <Typography variant="body2" mt={1}>
-            L’enjeu du cartogramme (ou anamorphose, c’est à dire déformation) est de rendre compte d’un phénomène en déformant les surfaces des entités d’un fond de carte, tout en conservant suffisamment leur forme pour qu’elles soient lisibles.
-          </Typography>
-        </Collapse>
-      </Box>
+      
 
       {/* Box source en bas à gauche */}
       <Box
