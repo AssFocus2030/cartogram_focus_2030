@@ -5,7 +5,6 @@ import { geoBertin1953 } from "d3-geo-projection";
 import MapToggle from "./MapToggle";
 import { Box, Typography } from "@mui/material";
 
-
 type GeoJSONType = any;
 
 interface CartogramProps {
@@ -18,7 +17,6 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
   const [geoData, setGeoData] = useState<GeoJSONType[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-
   /** 🔹 Normalise le GeoJSON pour n’avoir que des Polygons */
   const normalizeGeoJSON = (geo: GeoJSONType) => {
     const features: any[] = [];
@@ -30,7 +28,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
           features.push({
             type: "Feature",
             geometry: { type: "Polygon", coordinates: coords },
-            properties: f.properties
+            properties: f.properties,
           });
         });
       }
@@ -43,7 +41,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
     const fetchAllGeo = async () => {
       try {
         const allData = await Promise.all(
-          geoUrls.map(async url => {
+          geoUrls.map(async (url) => {
             const res = await fetch(url);
             if (!res.ok) throw new Error(`Erreur HTTP: ${res.status} pour ${url}`);
             const json = await res.json();
@@ -71,22 +69,29 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
 
     // ✅ Projection principale
     const projection = geoBertin1953().fitExtent(
-      [[width * 0.02, height * 0.02], [width * 0.98, height * 0.98]],
+      [
+        [width * 0.02, height * 0.02],
+        [width * 0.98, height * 0.98],
+      ],
       geoData[currentIndex]
     );
 
     const path = d3.geoPath().projection(projection);
 
-    // ✅ Graticule FIXE (défini une seule fois, ne bouge pas lors du changement de carte)
+    // ✅ Graticule FIXE
     const graticule = d3.geoGraticule10();
     const graticulePath = d3.geoPath().projection(
       geoBertin1953().fitExtent(
-        [[width * 0.02, height * 0.02], [width * 0.98, height * 0.98]],
-        geoData[0] // graticule basé sur la carte originale
+        [
+          [width * 0.02, height * 0.02],
+          [width * 0.98, height * 0.98],
+        ],
+        geoData[0]
       )
     );
 
-    svg.append("path")
+    svg
+      .append("path")
       .datum(graticule)
       .attr("fill", "none")
       .attr("stroke", "#ccc")
@@ -99,13 +104,15 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
       .filter((v: number) => !isNaN(v) && isFinite(v));
 
     const nbClasses = 5;
-    const colorScale = d3.scaleQuantile<string>()
+    const colorScale = d3
+      .scaleQuantile<string>()
       .domain(values)
       .range(["#feebe9ff", "#fccfcaff", "#faaea6ff", "#f6998cff", "#f27c6cff"]);
 
     const breaks = colorScale.quantiles();
 
-    svg.selectAll("path.geo")
+    svg
+      .selectAll("path.geo")
       .data(geoData[currentIndex].features)
       .join("path")
       .attr("class", "geo")
@@ -132,7 +139,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
           tooltip
             .style("display", "block")
             .html(`
-              <span style="font-size:16px; color: #ef6351; font-weight:bold;">${name}</span><br/>
+              <span style="font-size:14px; color: #ef6351; font-weight:bold;">${name}</span><br/>
               Mentions dans la presse : <strong>Non renseigné</strong><br/>
               Population : <strong>${pop.toLocaleString()}</strong><br/>
               Nombre de mentions par million d'habitant : <strong>Non renseigné</strong>
@@ -141,18 +148,40 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
           tooltip
             .style("display", "block")
             .html(`
-              <span style="font-size:16px; color: #ef6351; font-weight:bold;">${name}</span><br/>
+              <span style="font-size:14px; color: #ef6351; font-weight:bold;">${name}</span><br/>
               Mentions dans la presse : <strong>${current.toLocaleString()}</strong><br/>
               Population : <strong>${pop.toLocaleString()}</strong><br/>
-              Nombre de mentions par million d'habitant : <strong>${(ratio * 1e6).toFixed(2)}</strong> / 1M hab.
+              Nombre de mentions par million d'habitant : <strong>${(ratio * 1e6).toFixed(
+                2
+              )}</strong> / 1M hab.
             `);
         }
       })
-      .on("mousemove", event => {
+      .on("mousemove", (event) => {
+        const tooltipNode = tooltipRef.current;
+        if (!tooltipNode) return;
+
+        const tooltipWidth = tooltipNode.offsetWidth;
+        const tooltipHeight = tooltipNode.offsetHeight;
+        const margin = 10;
+
+        let left = event.clientX + margin;
+        let top = event.clientY + margin;
+
+        // ✅ Empêche le dépassement à droite
+        if (left + tooltipWidth > window.innerWidth - margin) {
+          left = event.clientX - tooltipWidth - margin;
+        }
+
+        // ✅ Empêche le dépassement en bas
+        if (top + tooltipHeight > window.innerHeight - margin) {
+          top = event.clientY - tooltipHeight - margin;
+        }
+
         tooltip
           .style("position", "fixed")
-          .style("left", event.clientX + 5 + "px")
-          .style("top", event.clientY + 5 + "px");
+          .style("left", left + "px")
+          .style("top", top + "px");
       })
       .on("mouseout", function (_: any, d: any) {
         const ratio = d.properties.current / d.properties.POP_EST;
@@ -165,94 +194,85 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
         tooltip.style("display", "none");
       });
 
-/// 🔹 Légende responsive
-const legendWidth = width * 0.15;
-const legendHeight = height * 0.015;
+    /// 🔹 Légende responsive
+    const legendWidth = width * 0.15;
+    const legendHeight = height * 0.015;
 
-const titleLines = [
-  "Nombre de mentions dans la presse",
-  "par millions d'habitant"
-];
-const fontSizeTitle = Math.max(14, height * 0.014);
-const lineHeight = 1.3;
+    const titleLines = [
+      "Nombre de mentions dans la presse",
+      "par millions d'habitant",
+    ];
+    const fontSizeTitle = Math.max(14, height * 0.014);
+    const lineHeight = 1.3;
 
-// Estimation largeur texte
-const approxTextWidth = Math.max(...titleLines.map(d => d.length)) * fontSizeTitle * 0.6;
+    const approxTextWidth = Math.max(...titleLines.map((d) => d.length)) * fontSizeTitle * 0.6;
+    const totalLegendWidth = Math.max(legendWidth, approxTextWidth);
+    let legendX = width * 0.8;
+    if (legendX + totalLegendWidth > width - width * 0.01) {
+      legendX = width - totalLegendWidth - width * 0.01;
+    }
+    legendX = Math.max(legendX, width * 0.02);
+    const minTopMargin = 0.03;
+    const extraTopMargin = Math.min(0.1, 0.1 * (350 / height));
+    const legendY = height * (minTopMargin + extraTopMargin);
 
-// Largeur totale de la légende
-const totalLegendWidth = Math.max(legendWidth, approxTextWidth);
+    const legend = svg
+      .append("g")
+      .attr("transform", `translate(${legendX}, ${legendY})`);
 
-// Position X responsive
-let legendX = width * 0.8;
-if (legendX + totalLegendWidth > width - width * 0.01) {
-  legendX = width - totalLegendWidth - width * 0.01;
-}
-legendX = Math.max(legendX, width * 0.02); // ne pas dépasser à gauche
+    legend
+      .selectAll("text.title")
+      .data(titleLines)
+      .join("text")
+      .attr("class", "title")
+      .attr("x", 0)
+      .attr("y", (_, i) => -lineHeight * fontSizeTitle + i * fontSizeTitle * lineHeight)
+      .attr("font-size", fontSizeTitle)
+      .attr("fill", "#666")
+      .text((d) => d);
 
-// Position Y responsive avec plus de marge si la fenêtre est petite
-const minTopMargin = 0.03; // marge par défaut
-const extraTopMargin = Math.min(0.1, 0.1 * (350 / height)); // augmente quand la hauteur diminue
-const legendY = height * (minTopMargin + extraTopMargin);
+    const minTitleToLegendGap = 12;
+    const maxTitleToLegendGap = 25;
+    const titleToLegendGap = Math.min(
+      maxTitleToLegendGap,
+      Math.max(minTitleToLegendGap, height * 0.02)
+    );
 
-const legend = svg.append("g").attr("transform", `translate(${legendX}, ${legendY})`);
+    const legendData = d3.range(nbClasses).map((i) => ({
+      color: colorScale.range()[i],
+    }));
 
-// 🔹 Titres
-legend.selectAll("text.title")
-  .data(titleLines)
-  .join("text")
-  .attr("class", "title")
-  .attr("x", 0)
-  .attr("y", (_, i) => -lineHeight * fontSizeTitle + i * fontSizeTitle * lineHeight)
-  .attr("font-size", fontSizeTitle)
-  .attr("fill", "#666")
-  .text(d => d);
+    legend
+      .selectAll("rect")
+      .data(legendData)
+      .join("rect")
+      .attr("x", (_, i) => i * (legendWidth / nbClasses))
+      .attr("y", titleToLegendGap)
+      .attr("width", legendWidth / nbClasses)
+      .attr("height", legendHeight)
+      .attr("fill", (d) => d.color)
+      .attr("stroke", "#fff");
 
-// 🔹 Gap entre titre et rectangles adaptatif
-const minTitleToLegendGap = 12; // gap minimal en pixels
-const maxTitleToLegendGap = 25; // gap maximal en pixels
-// Calcul adaptatif selon la hauteur de la fenêtre
-const titleToLegendGap = Math.min(maxTitleToLegendGap, Math.max(minTitleToLegendGap, height * 0.02));
+    const minLegendToTextGap = 10;
+    const legendToTextGap = Math.max(minLegendToTextGap, height * 0.015);
 
-
-// Rectangles de la légende
-const legendData = d3.range(nbClasses).map(i => ({
-  color: colorScale.range()[i]
-}));
-
-legend.selectAll("rect")
-  .data(legendData)
-  .join("rect")
-  .attr("x", (_, i) => i * (legendWidth / nbClasses))
-  .attr("y", titleToLegendGap)
-  .attr("width", legendWidth / nbClasses)
-  .attr("height", legendHeight)
-  .attr("fill", d => d.color)
-  .attr("stroke", "#fff");
-
-// 🔹 Gap minimum entre rectangles et texte des valeurs
-const minLegendToTextGap = 10; // en pixels
-const legendToTextGap = Math.max(minLegendToTextGap, height * 0.015);
-
-// Texte des valeurs
-const limits = [d3.min(values)!, ...breaks];
-legend.selectAll("text.value")
-  .data(limits)
-  .join("text")
-  .attr("class", "value")
-  .attr("x", (_, i) => i * (legendWidth / nbClasses))
-  .attr("y", titleToLegendGap + legendHeight + legendToTextGap)
-  .attr("font-size", Math.max(12, height * 0.012))
-  .attr("fill", "#666")
-  .attr("text-anchor", "start")
-  .text((d, i) => {
-    const value = Math.round(Number(d) * 1e6).toLocaleString("fr-FR");
-    if (i === 0) return value;
-    if (i === limits.length - 1) return `${value} et supérieur`;
-    return value;
-  });
-
-
-
+    const limits = [d3.min(values)!, ...breaks];
+    legend
+      .selectAll("text.value")
+      .data(limits)
+      .join("text")
+      .attr("class", "value")
+      .attr("x", (_, i) => i * (legendWidth / nbClasses))
+      .attr("y", titleToLegendGap + legendHeight + legendToTextGap)
+      .attr("font-size", Math.max(12, height * 0.012))
+      .attr("fill", "#666")
+      .attr("text-anchor", "start")
+      .text((d, i) => {
+        const value = Math.round(Number(d) * 1e6).toLocaleString("fr-FR");
+        if (i === 0) return value;
+        if (i === limits.length - 1) return `${value} et supérieur`;
+        return value;
+      });
   };
 
   useEffect(() => {
@@ -271,7 +291,10 @@ legend.selectAll("text.value")
     const height = svgRef.current?.clientHeight || window.innerHeight;
 
     const projection = geoBertin1953().fitExtent(
-      [[width * 0.02, height * 0.02], [width * 0.98, height * 0.98]],
+      [
+        [width * 0.02, height * 0.02],
+        [width * 0.98, height * 0.98],
+      ],
       geoData[index]
     );
     const path = d3.geoPath().projection(projection);
@@ -283,7 +306,7 @@ legend.selectAll("text.value")
     const dummyPolygon = {
       type: "Feature",
       geometry: { type: "Polygon", coordinates: [[[0, 0], [0, 0], [0, 0], [0, 0]]] },
-      properties: {}
+      properties: {},
     };
 
     const fromPadded = [...fromFeatures];
@@ -291,8 +314,8 @@ legend.selectAll("text.value")
     while (fromPadded.length < maxLen) fromPadded.push(dummyPolygon);
     while (toPadded.length < maxLen) toPadded.push(dummyPolygon);
 
-    const fromPaths = fromPadded.map(f => path(f) as string);
-    const toPaths = toPadded.map(f => path(f) as string);
+    const fromPaths = fromPadded.map((f) => path(f) as string);
+    const toPaths = toPadded.map((f) => path(f) as string);
 
     const paths = svg.selectAll("path.geo").data(toPaths);
     paths
@@ -317,18 +340,16 @@ legend.selectAll("text.value")
           pointerEvents: "none",
           backgroundColor: "white",
           color: "black",
-          padding: "6px 10px",
+          padding: "4px 8px",
           display: "none",
-          fontSize: "12px",
+          fontSize: "11px",
           fontWeight: 500,
           boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
-          borderRadius: 0,
-          lineHeight: 1.4,
+          borderRadius: 4,
+          lineHeight: 1.3,
           whiteSpace: "nowrap",
         }}
       />
-
-      
 
       {/* Box source en bas à gauche */}
       <Box
