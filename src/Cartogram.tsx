@@ -151,12 +151,12 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
               <span style="font-size:14px; color: #ef6351; font-weight:bold;">${name}</span><br/>
               Mentions dans la presse : <strong>${current.toLocaleString()}</strong><br/>
               Population : <strong>${pop.toLocaleString()}</strong><br/>
-              Nombre de mentions par million d'habitant : <strong>${(ratio * 1e6).toFixed(
+              Mentions pour 1M d'habitant : <strong>${(ratio * 1e6).toFixed(
                 2
               )}</strong> / 1M hab.
             `);
         }
-      })
+      }) 
       .on("mousemove", (event) => {
         const tooltipNode = tooltipRef.current;
         if (!tooltipNode) return;
@@ -325,7 +325,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
       .duration(1000)
       .attrTween("d", (_, i) => flubber.interpolate(fromPaths[i], toPaths[i]));
 
-    setTimeout(() => setCurrentIndex(index), 1500);
+    setTimeout(() => setCurrentIndex(index), 1000);
   };
 
   /** 🔹 Rendu principal */
