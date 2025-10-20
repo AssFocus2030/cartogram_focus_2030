@@ -3,7 +3,8 @@ import * as d3 from "d3";
 import * as flubber from "flubber";
 // @ts-ignore: no type declarations available for d3-geo-projection
 import { geoBertin1953 } from "d3-geo-projection";
-import MapToggle from "./MapToggle.tsx";
+import MapToggle from './MapToggle';
+
 import { Box, Typography } from "@mui/material";
 import { africanISO_A3 } from "./africanCountries.ts"; // ⚡ codes ISO Afrique
 
