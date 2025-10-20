@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import Cartogram from "./Cartogram";
+import Cartogram from "./Cartogram.tsx";
 
 const geoUrls = [
   "/world_def.geojson",
