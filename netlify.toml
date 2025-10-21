@@ -1,0 +1,7 @@
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_VERSION = "9"
+
+[build]
+  command = "npm run build"
+  publish = "dist"  # ou le dossier de build de ton projet
