@@ -1,0 +1,4 @@
+export default {
+  // tes autres configs
+  external: ['@rollup/rollup-linux-x64-gnu'],
+};
