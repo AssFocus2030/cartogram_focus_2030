@@ -4,8 +4,9 @@ import * as flubber from "flubber";
 // @ts-ignore: no type declarations available for d3-geo-projection
 import { geoBertin1953 } from "d3-geo-projection";
 import MapToggle from './MapToggle.tsx';
+import CountryChart from "./CountryChart";
 
-import { Box, Typography } from "@mui/material";
+import { Box, Typography, Button } from "@mui/material";
 import { africanISO_A3 } from "./africanCountries.ts"; // ⚡ codes ISO Afrique
 
 type GeoJSONType = any;
@@ -16,10 +17,10 @@ interface CartogramProps {
 
 const INDIA_A3 = "IND"; // ISO A3 Inde
 const EUROPE_A3 = [
-  "ALB", "AND", "AUT", "BLR", "BEL", "BIH", "BGR", "HRV", "CYP", "CZE", "DNK",
-  "EST", "FIN", "FRA", "DEU", "GRC", "HUN", "ISL", "IRL", "ITA", "LVA", "LTU", "LUX", "MLT",
-  "MDA", "MNE", "NLD", "MKD", "NOR", "POL", "PRT", "ROU", , "SMR", "SRB", "SVK", "SVN",
-  "ESP", "SWE", "CHE", "GBR", "UKR", "VAT"
+  "ALB","AND","AUT","BLR","BEL","BIH","BGR","HRV","CYP","CZE","DNK",
+  "EST","FIN","FRA","DEU","GRC","HUN","ISL","IRL","ITA","LVA","LTU","LUX","MLT",
+  "MDA","MNE","NLD","MKD","NOR","POL","PRT","ROU","SMR","SRB","SVK","SVN",
+  "ESP","SWE","CHE","GBR","UKR","VAT","MCO",
 ];
 
 const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
@@ -30,6 +31,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
   const [showAfrica, setShowAfrica] = useState(false);
   const [showIndia, setShowIndia] = useState(false);
   const [showEurope, setShowEurope] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState<any | null>(null);
 
   const normalizeGeoJSON = (geo: GeoJSONType) => {
     const features: any[] = [];
@@ -99,6 +101,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
       )
     );
 
+    // Graticule
     svg
       .append("path")
       .datum(graticule)
@@ -110,6 +113,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
 
     const displayedFeatures = geoData[currentIndex].features;
 
+    // Pays
     svg
       .selectAll("path.geo")
       .data(displayedFeatures)
@@ -139,15 +143,9 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
         tooltip
           .style("display", "block")
           .html(`
-            <span style="font-size:14px; color: ${
-              (showAfrica && africanISO_A3.includes(d.properties.ADM0_A3)) ||
-              (showIndia && d.properties.ADM0_A3 === INDIA_A3) ||
-              (showEurope && EUROPE_A3.includes(d.properties.ADM0_A3))
-                ? "#404040ff"
-                : "#4A919E"
-            }; font-weight:bold;">${name}</span><br/>
+            <span style="font-size:14px; color:#4A919E; font-weight:bold;">${name}</span><br/>
             Mentions dans la presse : <strong>${current.toLocaleString()}</strong><br/>
-            Mentions pour 1M d'habitant : <strong>${(ratio * 1e6).toFixed(2)}</strong> / 1M hab.
+            Mentions pour 1M d'habitant : <strong>${Math.round(ratio * 1e6)}</strong> / 1M hab.
           `);
       })
       .on("mousemove", (event) => {
@@ -165,6 +163,9 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
       .on("mouseout", function () {
         d3.select(this).attr("stroke-width", 1).attr("fill-opacity", 1);
         tooltip.style("display", "none");
+      })
+      .on("click", function (_: any, d: any) {
+        setSelectedCountry(d.properties);
       });
   };
 
@@ -238,8 +239,11 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
           borderRadius: 4,
           lineHeight: 1.3,
           whiteSpace: "nowrap",
+          zIndex: 1001
         }}
       />
+
+      {/* Source */}
       <Box
         sx={{
           position: "fixed",
@@ -247,7 +251,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
           left: 20,
           bgcolor: "white",
           borderRadius: 2,
-          boxShadow: 3,
+          boxShadow: 0,
           p: 1,
           zIndex: 1000,
         }}
@@ -257,6 +261,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
         </Typography>
       </Box>
 
+      {/* Map toggle */}
       <div
         style={{
           position: "fixed",
@@ -289,6 +294,48 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
           }}
         />
       </div>
+
+{/* Graphique du pays sélectionné */}
+{selectedCountry && (
+  <Box
+    sx={{
+      position: "fixed",
+      bottom: 20,
+      left: 20,
+      bgcolor: "white",
+      p: 2,
+      borderRadius: 2,
+      boxShadow: 3,
+      zIndex: 1002,
+      minWidth: 320,
+    }}
+  >
+    {/* Nom du pays + bouton fermer */}
+    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
+      <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
+        {selectedCountry.NAME_FR || selectedCountry.NAMEfr || "Pays"}
+      </Typography>
+      <Button
+        variant="outlined"
+        size="small"
+        onClick={() => setSelectedCountry(null)}
+        sx={{
+          borderRadius: "16px",
+          backgroundColor: "transparent",
+          borderColor: "#888",
+          color: "#444",
+          "&:hover": { backgroundColor: "rgba(0,0,0,0.05)", borderColor: "#555" },
+        }}
+      >
+        Fermer
+      </Button>
+    </Box>
+
+    <CountryChart countryData={selectedCountry} />
+  </Box>
+)}
+
+
     </div>
   );
 };
