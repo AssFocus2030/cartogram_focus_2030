@@ -17,23 +17,26 @@ export function useEuropePercentage() {
       .then(
         (
           data: {
-            features: Feature<
-              any,
-              { ADM0_A3?: string; current?: number }
-            >[];
+            features: Feature<any, { ADM0_A3?: string; current?: number }>[];
           }
         ) => {
-          const features = data.features;
+          // Exclure la France (FRA)
+          const filteredFeatures = data.features.filter(
+            f => f.properties.ADM0_A3 !== "FRA"
+          );
 
-          const totalSum = features.reduce(
+          // Somme totale sans la France
+          const totalSum = filteredFeatures.reduce(
             (sum, f) => sum + (f.properties.current ?? 0),
             0
           );
 
-          const europeSum = features
+          // Somme pour l’Europe sans la France
+          const europeSum = filteredFeatures
             .filter(f => EUROPE_A3.includes(f.properties.ADM0_A3 ?? ""))
             .reduce((sum, f) => sum + (f.properties.current ?? 0), 0);
 
+          // Calcul du pourcentage
           const percentageValue = Math.round((europeSum / totalSum) * 100);
           setPercentage(percentageValue);
         }

@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import type { Feature } from "geojson";
+import { PMACountriesISO_A3 } from "./PMAcountries.ts";
 
-export function useIndiaPercentage() {
+export function usePMAPercentage() {
   const [percentage, setPercentage] = useState<number | null>(null);
 
   useEffect(() => {
@@ -13,8 +14,10 @@ export function useIndiaPercentage() {
             features: Feature<any, { ADM0_A3?: string; current?: number }>[];
           }
         ) => {
+          const features = data.features;
+
           // Exclure la France (FRA)
-          const filteredFeatures = data.features.filter(
+          const filteredFeatures = features.filter(
             f => f.properties.ADM0_A3 !== "FRA"
           );
 
@@ -24,13 +27,13 @@ export function useIndiaPercentage() {
             0
           );
 
-          // Somme pour l’Inde (IND)
-          const indiaSum = filteredFeatures
-            .filter(f => f.properties.ADM0_A3 === "IND")
+          // Somme pour les pays PMA (également sans la France)
+          const pmaSum = filteredFeatures
+            .filter(f => PMACountriesISO_A3.includes(f.properties.ADM0_A3 ?? ""))
             .reduce((sum, f) => sum + (f.properties.current ?? 0), 0);
 
           // Calcul du pourcentage
-          const percentageValue = Math.round((indiaSum / totalSum) * 100);
+          const percentageValue = Math.round((pmaSum / totalSum) * 100);
           setPercentage(percentageValue);
         }
       )

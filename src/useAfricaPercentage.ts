@@ -25,16 +25,19 @@ export function useAfricaPercentage() {
             >[];
           }
         ) => {
-          const features = data.features;
+          // Exclure la France (FRA)
+          const filteredFeatures = data.features.filter(
+            f => f.properties.ADM0_A3 !== "FRA"
+          );
 
-          // Somme totale de la colonne "current"
-          const totalSum = features.reduce(
+          // Somme totale sans la France
+          const totalSum = filteredFeatures.reduce(
             (sum, f) => sum + (f.properties.current ?? 0),
             0
           );
 
-          // Somme des valeurs pour les pays africains
-          const africaSum = features
+          // Somme des valeurs pour les pays africains (sans la France)
+          const africaSum = filteredFeatures
             .filter(f => AFRICA_A3.includes(f.properties.ADM0_A3 ?? ""))
             .reduce((sum, f) => sum + (f.properties.current ?? 0), 0);
 

@@ -89,6 +89,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
     const width = svgRef.current?.clientWidth || window.innerWidth;
     const height = svgRef.current?.clientHeight || window.innerHeight;
 
+    // 🟢 🔧 Modification : marges calculées à partir des données pays uniquement
     const projection = d3.geoProjection(geoLarriveeRaw).fitExtent(
       [[width * 0.05, height * 0.05], [width * 0.95, height * 0.95]],
       geoData[currentIndex]
@@ -96,8 +97,14 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
 
     const path = d3.geoPath().projection(projection);
 
-    svg.append("rect").attr("width", width).attr("height", height).attr("fill", "#ffffffff");
+    // 🟡 Fond
+    svg
+      .append("rect")
+      .attr("width", width)
+      .attr("height", height)
+      .attr("fill", "#ffffffff");
 
+    // 🟢 Graticule (peut être coupé)
     const graticule = d3.geoGraticule10();
     svg
       .append("path")
@@ -117,6 +124,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
       .attr("stroke-width", 1)
       .attr("stroke", "white");
 
+    // 🎨 Couleurs selon zones
     const fillColor = (d: any) =>
       showPMA && PMACountriesISO_A3.includes(d.properties.ADM0_A3)
         ? "#ec6f64"
@@ -139,6 +147,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
         ? "#ab8533ff"
         : "white";
 
+    // 🌈 Animation douce des couleurs
     countries.each(function (d: any) {
       const country = d3.select(this);
       const prevColor = country.attr("fill") || "#74aed6ff";
@@ -159,19 +168,6 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
       }
     });
 
-    // 🧮 Calcul du total des mentions (hors France et doublons)
-        const uniqueCountries = Array.from(
-          new Map(
-            geoData[currentIndex].features.map((f: { properties: { ADM0_A3: any; }; }) => [f.properties.ADM0_A3, f])
-          ).values()
-        ) as any[];
-    
-        const totalWithoutFrance = d3.sum(
-          uniqueCountries
-            .filter((f: any) => f.properties.ADM0_A3 !== "FRA" && f.properties.ADM0_A3 !== "NOM")
-            .map((f: any) => f.properties.current ?? 0)
-        );
-
     // 🧭 Interaction
     countries
       .on("mouseover", function (_event: any, d: any) {
@@ -184,28 +180,18 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
         const p = d.properties;
         const name = p.NAME_FR || p.NAMEfr || "Inconnu";
         const isFrance = p.ADM0_A3 === "FRA";
-        const isNOM = p.ADM0_A3 === "NOM";
-        const current = isFrance || isNOM ? "non renseigné" : (p.current ?? 0).toLocaleString();
-        const pop = isFrance || isNOM ? "non renseigné" : (p.POP_EST ?? 0);
-        const ratio = isFrance || isNOM ? "non renseigné" : pop ? (p.current ?? 0) / pop : 0;
-
-        // ✅ Pourcentage correct basé sur les pays uniques
-        const percentage =
-          isFrance || isNOM
-            ? "non renseigné"
-            : totalWithoutFrance > 0
-            ? ((p.current ?? 0) / totalWithoutFrance * 100).toFixed(2) + " %"
-            : "0 %";
+        const current = isFrance ? "non renseigné" : (p.current ?? 0).toLocaleString();
+        const pop = isFrance ? "non renseigné" : (p.POP_EST ?? 0);
+        const ratio = isFrance ? "non renseigné" : pop ? (p.current ?? 0) / pop : 0;
 
         tooltip
           .style("display", "block")
           .html(`
-            <span style="font-size:14px; color:#74aed6ff; font-weight:bold;">${name}</span><br/>
+            <span style="font-size:14px; color:#4A919E; font-weight:bold;">${name}</span><br/>
             Mentions dans la presse : <strong>${current}</strong><br/>
             Mentions / 1M hab. : <strong>${
               ratio === "non renseigné" ? ratio : Math.round(ratio * 1e6)
-            }</strong><br/>
-            Part du total des mentions (hors France) : <strong>${percentage}</strong>
+            }</strong>
           `);
       })
       .on("mousemove", (event) => {
@@ -235,6 +221,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
       });
   };
 
+  // 🌍 Mise à jour
   useEffect(() => {
     drawMap(false);
     const handleResize = () => drawMap(false);
@@ -246,12 +233,14 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
     drawMap(true);
   }, [showPMA, showAfrica, showIndia, showEurope]);
 
+  // 🌀 Morphing entre cartes
   const changeMap = (index: number) => {
     if (geoData.length === 0 || index === currentIndex) return;
     const svg = d3.select(svgRef.current);
     const width = svgRef.current?.clientWidth || window.innerWidth;
     const height = svgRef.current?.clientHeight || window.innerHeight;
 
+    // 🔧 Même correction appliquée ici
     const projection = d3.geoProjection(geoLarriveeRaw).fitExtent(
       [[width * 0.05, height * 0.05], [width * 0.95, height * 0.95]],
       geoData[index]
@@ -301,29 +290,30 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
           zIndex: 1001,
         }}
       />
-      <Box
-        sx={{
-          position: "fixed",
-          bottom: 20,
-          left: 20,
-          bgcolor: "white",
-          borderRadius: 2,
-          p: 1,
-          zIndex: 1000,
-          boxShadow: 0.5,
-        }}
-      >
-        <img
-          src="/logo.webp"
-          alt="Logo"
-          style={{
-            height: 28,
-            width: "auto",
-            display: "block",
-          }}
-        />
-      </Box>
+     <Box
+  sx={{
+    position: "fixed",
+    bottom: 20,
+    left: 20,
+    bgcolor: "white",
+    borderRadius: 2,
+    p: 1,
+    zIndex: 1000,
+    boxShadow: 0.5,
+  }}
+>
+  <img
+    src="/logo.webp"
+    alt="Logo"
+    style={{
+      height: 28,
+      width: "auto",
+      display: "block",
+    }}
+  />
+</Box>
 
+      {/* 🔘 Map Toggle */}
       <div
         style={{
           position: "fixed",
