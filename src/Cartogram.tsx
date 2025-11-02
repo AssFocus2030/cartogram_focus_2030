@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
-import * as flubber from "flubber";
+
 // @ts-ignore
 import { geoLarriveeRaw } from "d3-geo-projection";
 
@@ -127,7 +127,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
       showPMA && PMACountriesISO_A3.includes(d.properties.ADM0_A3)
         ? "#e05a55ff"
         : showAfrica && africanISO_A3.includes(d.properties.ADM0_A3)
-        ? "#638f6bff"
+        ? "#6fb563ff"
         : showIndia && d.properties.ADM0_A3 === INDIA_A3
         ? "#ba5887ff"
         : showEurope && EUROPE_A3.includes(d.properties.ADM0_A3)
@@ -323,39 +323,101 @@ legend.append("text")
   useEffect(() => drawMap(true), [showPMA, showAfrica, showIndia, showEurope]);
 
   const changeMap = (index: number) => {
-    if (geoData.length === 0 || index === currentIndex) return;
-    const svg = d3.select(svgRef.current);
-    const width = svgRef.current?.clientWidth || window.innerWidth;
-    const height = svgRef.current?.clientHeight || window.innerHeight;
+  if (geoData.length === 0 || index === currentIndex) return;
+  const svg = d3.select(svgRef.current);
+  const width = svgRef.current?.clientWidth || window.innerWidth;
+  const height = svgRef.current?.clientHeight || window.innerHeight;
 
-    const projection = d3.geoProjection(geoLarriveeRaw).fitExtent(
-      [[width * 0.05, height * 0.05], [width * 0.95, height * 0.95]],
-      geoData[index]
-    );
+  const projection = d3.geoProjection(geoLarriveeRaw).fitExtent(
+    [[width * 0.05, height * 0.05], [width * 0.95, height * 0.95]],
+    geoData[index]
+  );
+  const path = d3.geoPath().projection(projection);
 
-    const path = d3.geoPath().projection(projection);
-    const from = geoData[currentIndex].features;
-    const to = geoData[index].features;
-    const maxLen = Math.max(from.length, to.length);
-    const dummy = {
-      type: "Feature",
-      geometry: { type: "Polygon", coordinates: [[[0, 0], [0, 0], [0, 0], [0, 0]]] },
-      properties: {},
-    };
-    const fromPadded = [...from, ...Array(maxLen - from.length).fill(dummy)];
-    const toPadded = [...to, ...Array(maxLen - to.length).fill(dummy)];
-    const fromPaths = fromPadded.map((f) => path(f) as string);
-    const toPaths = toPadded.map((f) => path(f) as string);
-    const paths = svg.selectAll("path.geo").data(toPaths);
+  const fromFeatures = geoData[currentIndex].features;
+  const toFeatures = geoData[index].features;
 
-    paths.join("path")
-      .attr("class", "geo")
-      .transition()
-      .duration(1000)
-      .attrTween("d", (_, i) => flubber.interpolate(fromPaths[i], toPaths[i]));
+  const maxLen = Math.max(fromFeatures.length, toFeatures.length);
+  const dummyFeature = { type: "Feature", geometry: { type: "Polygon", coordinates: [[[0, 0]]] }, properties: {} };
+  const fromPadded = [...fromFeatures, ...Array(maxLen - fromFeatures.length).fill(dummyFeature)];
+  const toPadded = [...toFeatures, ...Array(maxLen - toFeatures.length).fill(dummyFeature)];
 
-    setTimeout(() => setCurrentIndex(index), 1000);
-  };
+  // 🔹 Crée les paths une seule fois si besoin
+    // force a consistent selection type to avoid incompatible Selection<BaseType,...> issues
+    let paths: any = svg.selectAll<SVGPathElement, any>("path.geo").data(fromPadded);
+    if (paths.empty()) {
+      svg.selectAll<SVGPathElement, any>("path.geo")
+        .data(fromPadded)
+        .enter()
+        .append("path")
+        .attr("class", "geo")
+        .attr("fill", (d: any) => {
+          const current = d.properties.current ?? 0;
+          const pop = d.properties.POP_EST ?? 0;
+          const perMillion = pop ? (current / pop) * 1e6 : 0;
+          return d3.scaleThreshold<number, string>()
+            .domain([20,50,100,300])
+            .range(["#e9eff9","#c1d1ed","#7ea5d8","#448cca","#0471b0ff"])(perMillion);
+        })
+        .attr("stroke", (d: any) =>
+          showPMA && PMACountriesISO_A3.includes(d.properties.ADM0_A3)
+            ? "#e05a55ff"
+            : showAfrica && africanISO_A3.includes(d.properties.ADM0_A3)
+            ? "#6fb563ff"
+            : showIndia && d.properties.ADM0_A3 === INDIA_A3
+            ? "#ba5887ff"
+            : showEurope && EUROPE_A3.includes(d.properties.ADM0_A3)
+            ? "#fdc54a"
+            : "white"
+        )
+        .attr("stroke-width", 1)
+        .attr("stroke-linejoin", "round");
+      // re-query the selection so `paths` refers to the actual path elements (update+enter merged)
+      paths = svg.selectAll<SVGPathElement, any>("path.geo");
+    }
+
+  // 🔹 Animation avec easing et léger pulse
+  const duration = 1500;
+  const start = Date.now();
+
+  d3.timer(function update() {
+    const t = Math.min(1, (Date.now() - start) / duration);
+    const tEase = d3.easeCubicInOut(t);
+
+    const interpolated = fromPadded.map((f, i) => {
+      const coordsFrom = f.geometry.coordinates[0];
+      const coordsTo = toPadded[i].geometry.coordinates[0];
+
+      const maxCoordLen = Math.max(coordsFrom.length, coordsTo.length);
+      const coordsFromPadded = [...coordsFrom, ...Array(maxCoordLen - coordsFrom.length).fill([0,0])];
+      const coordsToPadded = [...coordsTo, ...Array(maxCoordLen - coordsTo.length).fill([0,0])];
+
+      const interpolatedCoords = coordsFromPadded.map((c,j) => [
+        c[0] * (1 - tEase) + coordsToPadded[j][0]*tEase,
+        c[1] * (1 - tEase) + coordsToPadded[j][1]*tEase
+      ]);
+
+      return { ...f, geometry: { ...f.geometry, coordinates: [interpolatedCoords] } };
+    });
+
+    paths.data(interpolated)
+      .attr("d", path as any)
+      .attr("stroke-width", (d: { properties: { ADM0_A3: string; }; }) =>
+        ((showPMA && PMACountriesISO_A3.includes(d.properties.ADM0_A3)) ||
+        (showAfrica && africanISO_A3.includes(d.properties.ADM0_A3)) ||
+        (showIndia && d.properties.ADM0_A3 === INDIA_A3) ||
+        (showEurope && EUROPE_A3.includes(d.properties.ADM0_A3)))
+          ? 1 + 0.5 * Math.sin(tEase * Math.PI)  // pulse léger
+          : 1
+      );
+
+    if (t === 1) {
+      setCurrentIndex(index);
+      return true; // stop timer
+    }
+  });
+};
+
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
