@@ -25,6 +25,33 @@ const MONTHS = [
   "juil-25",
   "août-25",
   "sept-25",
+  "oct-25",
+  "nov-25",
+  "déc-25",
+  "janv-26",
+  "févr-26",
+  "mars-26",
+  "avr-26",
+  "mai-26",
+  "juin-26",
+  "juil-26",
+  "août-26",
+  "sept-26",
+  "oct-26",
+  "nov-26",
+  "déc-26",
+  "janv-27",
+  "févr-27",
+  "mars-27",
+  "avr-27",
+  "mai-27",
+  "juin-27",
+  "juil-27",
+  "août-27",
+  "sept-27",
+  "oct-27",
+  "nov-27",
+  "déc-27",
 ];
 
 const normalizeKey = (key: string) =>
@@ -44,13 +71,14 @@ const CountryChart: React.FC<CountryChartProps> = ({ countryData, onClose }) => 
     normalizedData[normalizeKey(key)] = countryData[key];
   }
 
-  const data = MONTHS.map((month) => {
+  // 🔹 Ne garder que les mois existants dans countryData
+  const data = MONTHS.filter((month) => {
     const normalizedMonth = normalizeKey(month);
-    return {
-      month,
-      value: normalizedData[normalizedMonth] ?? 0,
-    };
-  });
+    return normalizedData[normalizedMonth] !== undefined;
+  }).map((month) => ({
+    month,
+    value: normalizedData[normalizeKey(month)],
+  }));
 
   return (
     <Box
@@ -85,7 +113,7 @@ const CountryChart: React.FC<CountryChartProps> = ({ countryData, onClose }) => 
               formatter={(value: number) => value.toLocaleString()} 
               labelFormatter={() => "Mentions"} 
             />
-            <Bar dataKey="value" fill="#74aed6ff" />
+            <Bar dataKey="value" fill="#2383c4" />
           </BarChart>
         </ResponsiveContainer>
       )}

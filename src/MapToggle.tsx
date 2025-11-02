@@ -151,34 +151,7 @@ const MapToggle: React.FC<MapToggleProps> = ({
 
       )}
 
-{/* 🔹 Box titre en haut à droite */}
-<Box
-  sx={{
-    position: "fixed",
-    top: 10,
-    left: 10,
-    bgcolor: "white",
-    p: 1,
-    borderRadius: 2,
-    boxShadow: 0,
-    zIndex: 1000,
-    maxWidth: 480,
-    textAlign: "left",
-    backgroundColor: "#ffffffff",
-  }}
->
-  <Typography
-    variant="subtitle1"
-    sx={{
-      fontWeight: "bold",
-      fontSize: "17px",
-      color: "#575757ff",
-      p:0
-    }}
-  >
-    Mentions des pays du monde dans 110 médias français
-  </Typography>
-</Box>
+
 
      {/* Barre principale */}
 <Box
@@ -269,7 +242,7 @@ const MapToggle: React.FC<MapToggleProps> = ({
             bottom: 20,
             right: 20,
             bgcolor: "white",
-            p: 2,
+            p: 1,
             borderRadius: 2,
             boxShadow: 3,
             maxWidth: 300,
@@ -291,11 +264,12 @@ const MapToggle: React.FC<MapToggleProps> = ({
           </Typography>
           {percentagePMA !== null ? (
             <Typography variant="body2" sx={{ fontSize: "11px" }}>
-              Les 44 pays les plus vulnérables*, où se concentrent pourtant les
-              principaux défis du développement, ne représentent que{" "}
-              <strong>{percentagePMA.toFixed(0)}%</strong> des pays mentionnés
-              dans les médias français. *Liste de l'ONU.
-            </Typography>
+  Les <strong>44 pays les plus vulnérables*</strong>, où se concentrent pourtant les
+  principaux défis du développement, ne représentent que{" "}
+  <strong>{percentagePMA.toFixed(0)}%</strong> des pays mentionnés
+  dans les <strong>médias français</strong>. *Liste de l'ONU.
+</Typography>
+
           ) : (
             <Typography variant="body2" sx={{ color: "#888", fontSize: "11px" }}>
               Calcul du pourcentage en cours...
@@ -332,7 +306,7 @@ const MapToggle: React.FC<MapToggleProps> = ({
             bottom: 20,
             right: 20,
             bgcolor: "white",
-            p: 2,
+            p: 1,
             borderRadius: 2,
             boxShadow: 3,
             maxWidth: 300,
@@ -412,7 +386,7 @@ const MapToggle: React.FC<MapToggleProps> = ({
             bottom: 20,
             right: 20,
             bgcolor: "white",
-            p: 2,
+            p: 1,
             borderRadius: 2,
             boxShadow: 3,
             maxWidth: 300,
@@ -436,8 +410,8 @@ const MapToggle: React.FC<MapToggleProps> = ({
           {percentageIndia !== null ? (
             <Typography variant="body2" sx={{ fontSize: "11px" }}>
               <strong>{percentageIndia.toFixed(0)}%</strong> des mentions
-              concernent l’Inde où vit <strong>18%</strong> de la population
-              mondiale.
+              concernent l’Inde où vit <strong>18% de la population
+              mondiale.</strong> 
             </Typography>
           ) : (
             <Typography variant="body2" sx={{ color: "#888", fontSize: "11px" }}>
@@ -493,7 +467,7 @@ const MapToggle: React.FC<MapToggleProps> = ({
             bottom: 20,
             right: 20,
             bgcolor: "white",
-            p: 2,
+            p: 1,
             borderRadius: 2,
             boxShadow: 3,
             maxWidth: 300,
@@ -507,7 +481,7 @@ const MapToggle: React.FC<MapToggleProps> = ({
             sx={{
               fontWeight: "bold",
               mb: 0,
-              color: "#ab8533ff",
+              color: "#d8a942ff",
               fontSize: "12px",
             }}
           >
@@ -516,7 +490,7 @@ const MapToggle: React.FC<MapToggleProps> = ({
           {percentageEurope !== null ? (
             <Typography variant="body2" sx={{ fontSize: "11px" }}>
               <strong>{percentageEurope.toFixed(0)}%</strong> des mentions
-              concernent les pays européens.
+              concernent les pays européens. (France exclue)
             </Typography>
           ) : (
             <Typography variant="body2" sx={{ color: "#888", fontSize: "11px" }}>
