@@ -35,6 +35,13 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
   const [showIndia, setShowIndia] = useState(false);
   const [showEurope, setShowEurope] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<any | null>(null);
+  const [baseProjection, setBaseProjection] = useState<any>(null); // projection fixe pour le graticule
+  
+  // Stockage des interpolations pré-calculées
+  const interpolationsRef = useRef<{
+    forward: Array<(t: number) => string>;  // 0 -> 1
+    backward: Array<(t: number) => string>; // 1 -> 0
+  } | null>(null);
 
   useEffect(() => setShowPMA(true), []);
 
@@ -75,43 +82,119 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
     fetchAllGeo();
   }, [geoUrls]);
 
+  // Pré-calcul des interpolations Flubber au chargement
+  useEffect(() => {
+    if (geoData.length !== 2 || !svgRef.current) return;
+
+    const width = svgRef.current.clientWidth || window.innerWidth;
+    const height = svgRef.current.clientHeight || window.innerHeight;
+
+    // Créer les projections pour chaque carte
+    const projection0 = d3.geoProjection(geoLarriveeRaw).fitExtent(
+      [[width * 0.05, height * 0.05], [width * 0.95, height * 0.95]],
+      geoData[0]
+    );
+    const projection1 = d3.geoProjection(geoLarriveeRaw).fitExtent(
+      [[width * 0.05, height * 0.05], [width * 0.95, height * 0.95]],
+      geoData[1]
+    );
+
+    const path0 = d3.geoPath().projection(projection0);
+    const path1 = d3.geoPath().projection(projection1);
+
+    const from = geoData[0].features;
+    const to = geoData[1].features;
+    const maxLen = Math.max(from.length, to.length);
+
+    // Feature vide pour padding
+    const dummy = {
+      type: "Feature",
+      geometry: { type: "Polygon", coordinates: [[[0, 0], [0, 0], [0, 0], [0, 0]]] },
+      properties: {},
+    };
+
+    const fromPadded = [...from, ...Array(maxLen - from.length).fill(dummy)];
+    const toPadded = [...to, ...Array(maxLen - to.length).fill(dummy)];
+
+    // Générer tous les paths
+    const paths0 = fromPadded.map((f) => path0(f) as string);
+    const paths1 = toPadded.map((f) => path1(f) as string);
+
+    // Pré-calculer toutes les interpolations
+    console.log("🔄 Pré-calcul des interpolations Flubber...");
+    const forwardInterpolations = paths0.map((p0, i) => 
+      flubber.interpolate(p0, paths1[i])
+    );
+    const backwardInterpolations = paths1.map((p1, i) => 
+      flubber.interpolate(p1, paths0[i])
+    );
+
+    interpolationsRef.current = {
+      forward: forwardInterpolations,
+      backward: backwardInterpolations,
+    };
+    console.log("✅ Interpolations pré-calculées !");
+  }, [geoData]);
+
+  
+
+  /** --- DESSIN DE LA CARTE --- */
   const drawMap = (animateColors = true) => {
     if (geoData.length === 0) return;
 
     const svg = d3.select(svgRef.current);
     const tooltip = d3.select(tooltipRef.current);
-    svg.selectAll("*").remove();
+    svg.selectAll(".geo").remove(); // ❗ supprime seulement les pays
+    svg.selectAll(".legend").remove(); // ❗ mais garde le graticule
 
     const width = svgRef.current?.clientWidth || window.innerWidth;
     const height = svgRef.current?.clientHeight || window.innerHeight;
 
+    // --- Projection spécifique au GeoJSON pour le fitExtent
     const projection = d3.geoProjection(geoLarriveeRaw).fitExtent(
       [[width * 0.05, height * 0.05], [width * 0.95, height * 0.95]],
       geoData[currentIndex]
     );
     const path = d3.geoPath().projection(projection);
 
-    svg.append("rect").attr("width", width).attr("height", height).attr("fill", "#ffffffff");
+    // --- Crée le fond blanc une seule fois ---
+    if (svg.selectAll(".background").empty()) {
+      svg.append("rect")
+        .attr("class", "background")
+        .attr("width", width)
+        .attr("height", height)
+        .attr("fill", "#ffffffff");
+    }
 
-    const graticule = d3.geoGraticule10();
-    svg.append("path")
-      .datum(graticule)
-      .attr("fill", "none")
-      .attr("stroke", "#ccccccff")
-      .attr("stroke-width", 0.5)
-      .attr("stroke-dasharray", "2,2")
-      .attr("d", path as any);
+    // --- Crée le graticule UNE FOIS ---
+    if (!baseProjection) {
+      const proj = d3.geoProjection(geoLarriveeRaw).fitExtent(
+        [[width * 0.05, height * 0.05], [width * 0.95, height * 0.95]],
+        geoData[0]
+      );
+      setBaseProjection(() => proj);
+      const pathBase = d3.geoPath().projection(proj);
+      const graticule = d3.geoGraticule10();
+      svg.append("path")
+        .datum(graticule)
+        .attr("class", "graticule")
+        .attr("fill", "none")
+        .attr("stroke", "#ccccccff")
+        .attr("stroke-width", 0.5)
+        .attr("stroke-dasharray", "2,2")
+        .attr("d", pathBase as any);
+    }
 
-    // 🔹 Choropleth scale
+    // --- Échelles de couleur ---
     const thresholds = [20, 50, 100, 300];
     const colorScale = d3.scaleThreshold<number, string>()
       .domain(thresholds)
       .range([
-        "#e9eff9", // 0–20
-        "#c1d1ed", // 20–50
-        "#7ea5d8", // 50–100
-        "#448cca", // 100–300
-        "#0471b0ff", // >300
+        "#e9eff9",
+        "#c1d1ed",
+        "#7ea5d8",
+        "#448cca",
+        "#0471b0ff",
       ]);
 
     const fillColor = (d: any) => {
@@ -122,7 +205,6 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
       return colorScale(perMillion);
     };
 
-    // 🔹 Stroke color & width
     const strokeColor = (d: any) =>
       showPMA && PMACountriesISO_A3.includes(d.properties.ADM0_A3)
         ? "#e05a55ff"
@@ -142,23 +224,28 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
         ? 1
         : 1;
 
-    // 🔹 Définition glow filter
-    const defs = svg.append("defs");
-    const glowFilter = defs.append("filter")
-      .attr("id", "inner-glow")
-      .attr("x", "-50%")
-      .attr("y", "-50%")
-      .attr("width", "200%")
-      .attr("height", "200%");
-    glowFilter.append("feGaussianBlur").attr("stdDeviation", 3).attr("result", "blur");
-    glowFilter.append("feMerge")
-      .selectAll("feMergeNode")
-      .data(["blur", "SourceGraphic"])
-      .enter()
-      .append("feMergeNode")
-      .attr("in", d => d);
+    // --- Glow ---
+    const defs = svg.select("defs").empty()
+      ? svg.append("defs")
+      : svg.select("defs");
 
-    // 🔹 Draw countries
+    if (defs.select("#inner-glow").empty()) {
+      const glowFilter = defs.append("filter")
+        .attr("id", "inner-glow")
+        .attr("x", "-50%")
+        .attr("y", "-50%")
+        .attr("width", "200%")
+        .attr("height", "200%");
+      glowFilter.append("feGaussianBlur").attr("stdDeviation", 3).attr("result", "blur");
+      glowFilter.append("feMerge")
+        .selectAll("feMergeNode")
+        .data(["blur", "SourceGraphic"])
+        .enter()
+        .append("feMergeNode")
+        .attr("in", d => d);
+    }
+
+    // --- Dessin des pays ---
     const countries = svg.selectAll("path.geo")
       .data(geoData[currentIndex].features)
       .join("path")
@@ -186,7 +273,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
         });
     }
 
-    // 🔹 Tooltip
+    // --- Tooltip ---
     const uniqueCountries = Array.from(
       new Map(
         geoData[currentIndex].features.map((f: { properties: { ADM0_A3: any } }) => [f.properties.ADM0_A3, f])
@@ -199,42 +286,39 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
     );
 
     countries
-  .on("mouseover", function (_event: any, d: any) {
-    const iso = d.properties.ADM0_A3;
-    svg.selectAll("path.geo")
-      .filter((f: any) => f.properties.ADM0_A3 === iso)
-      .attr("stroke-width", 3)
-      .attr("fill-opacity", 0.6);
+      .on("mouseover", function (_event: any, d: any) {
+        const iso = d.properties.ADM0_A3;
+        svg.selectAll("path.geo")
+          .filter((f: any) => f.properties.ADM0_A3 === iso)
+          .attr("stroke-width", 3)
+          .attr("fill-opacity", 0.6);
 
-    const p = d.properties;
+        const p = d.properties;
+        let tooltipContent;
+        if (p.ADM0_A3 === "FRA") {
+          tooltipContent = `
+            <span style="font-size:14px; color:#2383c4; font-weight:bold;">France</span><br/>
+            Mentions : <strong>Non renseigné</strong><br/>
+            Mentions / 1M hab. : <strong>Non renseigné</strong><br/>
+            Part du total : <strong>Non renseigné</strong>
+          `;
+        } else {
+          const name = p.NAME_FR || p.NAMEfr || "Inconnu";
+          const current = p.current ?? 0;
+          const pop = p.POP_EST ?? 0;
+          const ratio = pop ? (current / pop) * 1e6 : 0;
+          const percentage = totalWithoutFrance ? (current / totalWithoutFrance) * 100 : 0;
 
-    // Affiche "Non renseigné" pour la France, sinon les données normales
-    let tooltipContent;
-    if (p.ADM0_A3 === "FRA") {
-      tooltipContent = `
-        <span style="font-size:14px; color:#2383c4; font-weight:bold;">France</span><br/>
-        Mentions : <strong>Non renseigné</strong><br/>
-        Mentions / 1M hab. : <strong>Non renseigné</strong><br/>
-        Part du total : <strong>Non renseigné</strong>
-      `;
-    } else {
-      const name = p.NAME_FR || p.NAMEfr || "Inconnu";
-      const current = p.current ?? 0;
-      const pop = p.POP_EST ?? 0;
-      const ratio = pop ? (current / pop) * 1e6 : 0;
-      const percentage = totalWithoutFrance ? (current / totalWithoutFrance) * 100 : 0;
+          tooltipContent = `
+            <span style="font-size:14px; color:#2383c4; font-weight:bold;">${name}</span><br/>
+            Mentions : <strong>${current.toLocaleString()}</strong><br/>
+            Mentions / 1M hab. : <strong>${Math.round(ratio)}</strong><br/>
+            Part du total : <strong>${percentage.toFixed(2)}%</strong>
+          `;
+        }
 
-      tooltipContent = `
-        <span style="font-size:14px; color:#2383c4; font-weight:bold;">${name}</span><br/>
-        Mentions : <strong>${current.toLocaleString()}</strong><br/>
-        Mentions / 1M hab. : <strong>${Math.round(ratio)}</strong><br/>
-        Part du total : <strong>${percentage.toFixed(2)}%</strong>
-      `;
-    }
-
-    tooltip.style("display", "block").html(tooltipContent);
-  })
-
+        tooltip.style("display", "block").html(tooltipContent);
+      })
       .on("mousemove", (event) => {
         const tooltipNode = tooltipRef.current;
         if (!tooltipNode) return;
@@ -255,62 +339,47 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
           .transition()
           .duration(300)
           .attr("stroke-width", strokeWidth(d))
-          .attr("fill-opacity", 1)
-          .attr("filter", (d: any) => {
-            if (
-              (showPMA && PMACountriesISO_A3.includes(d.properties.ADM0_A3)) ||
-              (showAfrica && africanISO_A3.includes(d.properties.ADM0_A3)) ||
-              (showIndia && d.properties.ADM0_A3 === INDIA_A3) ||
-              (showEurope && EUROPE_A3.includes(d.properties.ADM0_A3))
-            ) return "url(#inner-glow)";
-            return null;
-          });
+          .attr("fill-opacity", 1);
         tooltip.style("display", "none");
       })
       .on("click", (_, d: any) => setSelectedCountry(d.properties));
 
-
-    // 🔹 Choropleth legend
-const legendData = [0, 20, 50, 100, 300];
-// Changer la position ici
-const legend = svg.append("g").attr("transform", `translate(20, 30)`);
-const legendYOffset = 6; // espace sous le titre
+    // --- Légende ---
+    const legendData = [0, 20, 50, 100, 300];
+    const legend = svg.append("g").attr("class", "legend").attr("transform", `translate(20, 30)`);
+    const legendYOffset = 6;
 
     legend.selectAll("rect")
       .data(legendData)
       .enter()
       .append("rect")
       .attr("x", 0)
-      .attr("y", (_, i) => i * 22+ legendYOffset)
+      .attr("y", (_, i) => i * 22 + legendYOffset)
       .attr("width", 18)
       .attr("height", 18)
       .attr("fill", (d) => colorScale(d + 0.001))
       .attr("stroke", "#ffffffff");
-    
-      // Texte des valeurs
-legend.selectAll("text")
-  .data(legendData)
-  .enter()
-  .append("text")
-  .attr("x", 26)
-  .attr("y", (_, i) => i * 22 + 13 + legendYOffset)
-  .style("font-size", "12px")
-  .style("fill", "#646464ff") // couleur claire
-  .style("font-weight", 350) // light
-  .text((d, i) =>
-    i < legendData.length - 1 ? `${d}–${legendData[i + 1]}` : `>${d}`
-  );
 
-// Titre de la légende
-legend.append("text")
-  .attr("x", 0)
-  .attr("y", -6)
-  .style("font-size", "14px")
-  
-  .style("font-weight", 400) // light
-  .style("fill", "#201a1aff") // couleur claire
-  .text("Mentions dans la presse pour 1 million d'habitants");
+    legend.selectAll("text")
+      .data(legendData)
+      .enter()
+      .append("text")
+      .attr("x", 26)
+      .attr("y", (_, i) => i * 22 + 13 + legendYOffset)
+      .style("font-size", "12px")
+      .style("fill", "#646464ff")
+      .style("font-weight", 350)
+      .text((d, i) =>
+        i < legendData.length - 1 ? `${d}–${legendData[i + 1]}` : `>${d}`
+      );
 
+    legend.append("text")
+      .attr("x", 0)
+      .attr("y", -6)
+      .style("font-size", "14px")
+      .style("font-weight", 400)
+      .style("fill", "#201a1aff")
+      .text("Mentions dans la presse pour 1 million d'habitants");
   };
 
   useEffect(() => {
@@ -318,12 +387,14 @@ legend.append("text")
     const handleResize = () => drawMap(false);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [geoData, currentIndex]);
+  }, [geoData, currentIndex, baseProjection]);
 
   useEffect(() => drawMap(true), [showPMA, showAfrica, showIndia, showEurope]);
 
+  /** --- TRANSITION ENTRE CARTES --- */
   const changeMap = (index: number) => {
-    if (geoData.length === 0 || index === currentIndex) return;
+    if (geoData.length === 0 || index === currentIndex || !interpolationsRef.current) return;
+    
     const svg = d3.select(svgRef.current);
     const width = svgRef.current?.clientWidth || window.innerWidth;
     const height = svgRef.current?.clientHeight || window.innerHeight;
@@ -334,25 +405,28 @@ legend.append("text")
     );
 
     const path = d3.geoPath().projection(projection);
-    const from = geoData[currentIndex].features;
     const to = geoData[index].features;
-    const maxLen = Math.max(from.length, to.length);
+    const maxLen = Math.max(geoData[0].features.length, geoData[1].features.length);
     const dummy = {
       type: "Feature",
       geometry: { type: "Polygon", coordinates: [[[0, 0], [0, 0], [0, 0], [0, 0]]] },
       properties: {},
     };
-    const fromPadded = [...from, ...Array(maxLen - from.length).fill(dummy)];
     const toPadded = [...to, ...Array(maxLen - to.length).fill(dummy)];
-    const fromPaths = fromPadded.map((f) => path(f) as string);
     const toPaths = toPadded.map((f) => path(f) as string);
+    
+    // Utiliser les interpolations pré-calculées
+    const interpolations = index === 1 
+      ? interpolationsRef.current.forward 
+      : interpolationsRef.current.backward;
+
     const paths = svg.selectAll("path.geo").data(toPaths);
 
     paths.join("path")
       .attr("class", "geo")
       .transition()
       .duration(1000)
-      .attrTween("d", (_, i) => flubber.interpolate(fromPaths[i], toPaths[i]));
+      .attrTween("d", (_, i) => interpolations[i]);
 
     setTimeout(() => setCurrentIndex(index), 1000);
   };
@@ -400,7 +474,6 @@ legend.append("text")
           padding: 0,
           borderRadius: 0,
           zIndex: 1,
-          
         }}
       >
         <MapToggle
