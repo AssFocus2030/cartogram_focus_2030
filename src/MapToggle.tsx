@@ -62,7 +62,7 @@ const MapToggle: React.FC<MapToggleProps> = ({
     const timer = setTimeout(() => {
       setLocalChecked(true);
       onChange(true);
-    }, 300);
+    }, 600);
     return () => clearTimeout(timer);
   }, [onChange, userInteracted]);
 
