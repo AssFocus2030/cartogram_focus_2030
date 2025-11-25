@@ -8,6 +8,7 @@ import {
   Slide,
 } from "@mui/material";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import DownloadIcon from "@mui/icons-material/Download";
 
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined"; // <-- import du logo i
 import World from "./assets/World.svg";
@@ -57,12 +58,68 @@ const MapToggle: React.FC<MapToggleProps> = ({
     return () => clearTimeout(timer);
   }, []);
 
+  // Fonction de téléchargement CSV
+  const downloadCSV = async () => {
+    try {
+      const response = await fetch('/world_def.geojson');
+      if (!response.ok) throw new Error('Erreur de chargement du fichier');
+      const geojson = await response.json();
+
+      // Grouper par SOV_A3 pour avoir un seul enregistrement par pays (même avec MultiPolygon)
+      const countryMap = new Map();
+      geojson.features.forEach((feature: any) => {
+        const iso = feature.properties.SOV_A3;
+        if (!countryMap.has(iso)) {
+          countryMap.set(iso, feature.properties);
+        }
+      });
+      const uniqueCountries = Array.from(countryMap.values());
+
+      // Récupérer toutes les clés (colonnes) sauf geometry, coordinates et current
+      const allKeys = new Set<string>();
+      uniqueCountries.forEach((country: any) => {
+        Object.keys(country).forEach((key) => {
+          if (key !== 'geometry' && key !== 'coordinates' && key !== 'current') {
+            allKeys.add(key);
+          }
+        });
+      });
+      const headers = Array.from(allKeys);
+
+      // Construire le CSV
+      const csvRows = [];
+      csvRows.push(headers.join(','));
+
+      uniqueCountries.forEach((country: any) => {
+        const row = headers.map((header) => {
+          let value = country[header] ?? '';
+          // Échapper les virgules et guillemets
+          if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+            value = `"${value.replace(/"/g, '""')}"`;
+          }
+          return value;
+        });
+        csvRows.push(row.join(','));
+      });
+
+      // Télécharger le CSV
+      const csvContent = csvRows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'data_media_FOCUS2030.csv';
+      link.click();
+    } catch (error) {
+      console.error('Erreur lors du téléchargement CSV:', error);
+    }
+  };
+
   useEffect(() => {
     if (userInteracted) return;
     const timer = setTimeout(() => {
       setLocalChecked(true);
       onChange(true);
-    }, 600);
+    }, 2600);
     return () => clearTimeout(timer);
   }, [onChange, userInteracted]);
 
@@ -137,6 +194,7 @@ const MapToggle: React.FC<MapToggleProps> = ({
     boxShadow: 3,
     fontSize: "13px",
     color: "#333",
+    fontFamily: "'Open Sans', sans-serif",
     animation: "pulse 1s ease-in-out infinite",
     "@keyframes pulse": {
       "0%": { opacity: 0.8 },
@@ -151,6 +209,32 @@ const MapToggle: React.FC<MapToggleProps> = ({
 
       )}
 
+      {/* 📥 Bouton de téléchargement CSV */}
+      <Button
+        variant="outlined"
+        startIcon={<DownloadIcon />}
+        onClick={downloadCSV}
+        sx={{
+          position: "fixed",
+          bottom: 28,
+          left: 170,
+          borderRadius: "16px",
+          backgroundColor: "white",
+          borderColor: "#d3d3d3ff",
+          color: "#444",
+          fontSize: "11px",
+          textTransform: "none",
+          boxShadow: 0,
+          "&:hover": {
+            backgroundColor: "rgba(0,0,0,0.05)",
+            borderColor: "#555",
+          },
+          zIndex: 1000,
+        }}
+      >
+        Télécharger les données
+      </Button>
+
 
 
      {/* Barre principale */}
@@ -158,7 +242,6 @@ const MapToggle: React.FC<MapToggleProps> = ({
   sx={{
     display: "flex",
     flexDirection: "column",
-    fontFamily: "Arial, sans-serif",
     width: "fit-content",
     position: "fixed",
     top: 20,
@@ -169,7 +252,8 @@ const MapToggle: React.FC<MapToggleProps> = ({
     boxShadow: 3,
     zIndex: 1000,
     transition: "all 0.3s ease", // <- transition douce pour le repliage
-    overflow: "hidden", 
+    overflow: "hidden",
+    fontFamily: "'Open Sans', sans-serif", 
   }}
 >
   <Box display="flex" alignItems="center" gap={1}>
@@ -218,6 +302,7 @@ const MapToggle: React.FC<MapToggleProps> = ({
           lineHeight: 1.4,
           color: "#444",
           mb: 1,
+          fontFamily: "'Open Sans', sans-serif",
         }}
       >
         Cette carte illustre{" "}
@@ -249,6 +334,7 @@ const MapToggle: React.FC<MapToggleProps> = ({
             width: "30vw",
             fontSize: "11px",
             lineHeight: 1.3,
+            fontFamily: "'Open Sans', sans-serif",
           }}
         >
           <Typography
@@ -258,20 +344,21 @@ const MapToggle: React.FC<MapToggleProps> = ({
               mb: 0,
               color: "#ba2f33ff",
               fontSize: "12px",
+              fontFamily: "'Open Sans', sans-serif",
             }}
           >
-            PMA
+             44 pays les plus vulnérables et les plus défavorisés
           </Typography>
           {percentagePMA !== null ? (
-            <Typography variant="body2" sx={{ fontSize: "11px" }}>
-  Les <strong>44 pays les plus vulnérables*</strong>, où se concentrent pourtant les
+            <Typography variant="body2" sx={{ fontSize: "11px", fontFamily: "'Open Sans', sans-serif" }}>
+  Les <strong>44 pays les plus vulnérables</strong>, où se concentrent pourtant les
   principaux défis du développement, ne représentent que{" "}
   <strong>{percentagePMA.toFixed(0)}%</strong> des pays mentionnés
-  dans les <strong>médias français</strong>. *Liste de l'ONU.
+  dans les <strong>médias français</strong>.<br />Source : Classification des Nations unies des pays les moins avancés.
 </Typography>
 
           ) : (
-            <Typography variant="body2" sx={{ color: "#888", fontSize: "11px" }}>
+            <Typography variant="body2" sx={{ color: "#888", fontSize: "11px", fontFamily: "'Open Sans', sans-serif" }}>
               Calcul du pourcentage en cours...
             </Typography>
           )}
@@ -313,6 +400,7 @@ const MapToggle: React.FC<MapToggleProps> = ({
             width: "30vw",
             fontSize: "11px",
             lineHeight: 1.3,
+            fontFamily: "'Open Sans', sans-serif",
           }}
         >
           <Typography
@@ -322,18 +410,19 @@ const MapToggle: React.FC<MapToggleProps> = ({
               mb: 0,
               color: "#155c22ff",
               fontSize: "12px",
+              fontFamily: "'Open Sans', sans-serif",
             }}
           >
             Afrique
           </Typography>
           {percentageAfrica !== null ? (
-            <Typography variant="body2" sx={{ fontSize: "11px" }}>
+            <Typography variant="body2" sx={{ fontSize: "11px", fontFamily: "'Open Sans', sans-serif" }}>
               <strong>{percentageAfrica.toFixed(0)}%</strong> des mentions dans
               les médias français concernent les <strong>54</strong> pays du
               continent africain.
             </Typography>
           ) : (
-            <Typography variant="body2" sx={{ color: "#888", fontSize: "11px" }}>
+            <Typography variant="body2" sx={{ color: "#888", fontSize: "11px", fontFamily: "'Open Sans', sans-serif" }}>
               Calcul du pourcentage en cours...
             </Typography>
           )}
@@ -393,7 +482,7 @@ const MapToggle: React.FC<MapToggleProps> = ({
             width: "30vw",
             fontSize: "11px",
             lineHeight: 1.3,
-            
+            fontFamily: "'Open Sans', sans-serif",
           }}
         >
           <Typography
@@ -403,18 +492,19 @@ const MapToggle: React.FC<MapToggleProps> = ({
               mb: 0,
               color: "#aa1f62",
               fontSize: "12px",
+              fontFamily: "'Open Sans', sans-serif",
             }}
           >
             Inde
           </Typography>
           {percentageIndia !== null ? (
-            <Typography variant="body2" sx={{ fontSize: "11px" }}>
+            <Typography variant="body2" sx={{ fontSize: "11px", fontFamily: "'Open Sans', sans-serif" }}>
               <strong>{percentageIndia.toFixed(0)}%</strong> des mentions
-              concernent l’Inde où vit <strong>18% de la population
+              concernent l'Inde où vit <strong>18% de la population
               mondiale.</strong> 
             </Typography>
           ) : (
-            <Typography variant="body2" sx={{ color: "#888", fontSize: "11px" }}>
+            <Typography variant="body2" sx={{ color: "#888", fontSize: "11px", fontFamily: "'Open Sans', sans-serif" }}>
               Calcul du pourcentage en cours...
             </Typography>
           )}
@@ -474,6 +564,7 @@ const MapToggle: React.FC<MapToggleProps> = ({
             width: "30vw",
             fontSize: "11px",
             lineHeight: 1.3,
+            fontFamily: "'Open Sans', sans-serif",
           }}
         >
           <Typography
@@ -483,17 +574,18 @@ const MapToggle: React.FC<MapToggleProps> = ({
               mb: 0,
               color: "#d8a942ff",
               fontSize: "12px",
+              fontFamily: "'Open Sans', sans-serif",
             }}
           >
             Europe
           </Typography>
           {percentageEurope !== null ? (
-            <Typography variant="body2" sx={{ fontSize: "11px" }}>
+            <Typography variant="body2" sx={{ fontSize: "11px", fontFamily: "'Open Sans', sans-serif" }}>
               <strong>{percentageEurope.toFixed(0)}%</strong> des mentions
               concernent les pays européens. (France exclue)
             </Typography>
           ) : (
-            <Typography variant="body2" sx={{ color: "#888", fontSize: "11px" }}>
+            <Typography variant="body2" sx={{ color: "#888", fontSize: "11px", fontFamily: "'Open Sans', sans-serif" }}>
               Calcul du pourcentage en cours...
             </Typography>
           )}

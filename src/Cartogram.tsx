@@ -198,6 +198,9 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
       ]);
 
     const fillColor = (d: any) => {
+      // France en gris clair car non pertinente dans l'étude
+      if (d.properties.ADM0_A3 === "FRA") return "#dededeff";
+      
       const current = d.properties.current ?? 0;
       const pop = d.properties.POP_EST ?? 0;
       if (!pop || pop <= 0) return "#e0e0e0";
@@ -209,7 +212,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
       showPMA && PMACountriesISO_A3.includes(d.properties.ADM0_A3)
         ? "#e05a55ff"
         : showAfrica && africanISO_A3.includes(d.properties.ADM0_A3)
-        ? "#6fb563ff"
+        ? "#55994aff"
         : showIndia && d.properties.ADM0_A3 === INDIA_A3
         ? "#ba5887ff"
         : showEurope && EUROPE_A3.includes(d.properties.ADM0_A3)
@@ -366,9 +369,9 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
       .append("text")
       .attr("x", 26)
       .attr("y", (_, i) => i * 22 + 13 + legendYOffset)
-      .style("font-size", "12px")
+      .style("font-size", "13px")
       .style("fill", "#646464ff")
-      .style("font-weight", 350)
+      .style("font-weight", 390)
       .text((d, i) =>
         i < legendData.length - 1 ? `${d}–${legendData[i + 1]}` : `>${d}`
       );
@@ -376,8 +379,8 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
     legend.append("text")
       .attr("x", 0)
       .attr("y", -6)
-      .style("font-size", "14px")
-      .style("font-weight", 400)
+      .style("font-size", "15px")
+      .style("font-weight", 350)
       .style("fill", "#201a1aff")
       .text("Mentions dans la presse pour 1 million d'habitants");
   };
@@ -473,7 +476,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
           background: "transparent",
           padding: 0,
           borderRadius: 0,
-          zIndex: 1,
+          zIndex: 1000,
         }}
       >
         <MapToggle
@@ -518,7 +521,10 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
               Fermer
             </Button>
           </Box>
-          <CountryChart countryData={selectedCountry} />
+          <CountryChart
+            countryData={selectedCountry}
+            allCountriesData={geoData[currentIndex]?.features.map((f: any) => f.properties) || []}
+          />
         </Box>
       )}
     </div>
