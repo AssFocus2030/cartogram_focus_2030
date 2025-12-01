@@ -47,7 +47,7 @@ const CountryChart: React.FC<CountryChartProps> = ({
     keyMapping[normalizeKey(key)] = key;
   });
 
-  // 🔥 Calcul du % pour chaque mois
+  //  Calcul du % pour chaque mois
   const data = MONTHS.map((month) => {
     const normalizedMonth = normalizeKey(month);
     const originalKey = keyMapping[normalizedMonth];
