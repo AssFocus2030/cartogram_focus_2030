@@ -76,11 +76,9 @@ const MapToggle: React.FC<MapToggleProps> = ({
       const currentIndex = headers.findIndex(h => h.trim().toLowerCase() === 'current');
 
       // Filtrer la colonne "current"
-      let newHeaders = headers;
       let newLines = lines;
 
       if (currentIndex !== -1) {
-        newHeaders = headers.filter((_, i) => i !== currentIndex);
         newLines = lines.map(line => {
           const columns = line.split(',');
           return columns.filter((_, i) => i !== currentIndex).join(',');
