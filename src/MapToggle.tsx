@@ -6,6 +6,8 @@ import {
   Typography,
   Button,
   Slide,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -46,6 +48,7 @@ const MapToggle: React.FC<MapToggleProps> = ({
   const [showEuropeBox, setShowEuropeBox] = useState(false);
 
   const [showArrowHint, setShowArrowHint] = useState(true); // 👈 affichage temporaire de l'indication
+  const [downloadMenuAnchor, setDownloadMenuAnchor] = useState<null | HTMLElement>(null);
 
   const percentageEurope = useEuropePercentage();
   const percentageAfrica = useAfricaPercentage();
@@ -61,56 +64,77 @@ const MapToggle: React.FC<MapToggleProps> = ({
   // Fonction de téléchargement CSV
   const downloadCSV = async () => {
     try {
-      const response = await fetch('/world_def.geojson');
-      if (!response.ok) throw new Error('Erreur de chargement du fichier');
-      const geojson = await response.json();
+      const response = await fetch('/data_FOCUS2030.csv');
+      if (!response.ok) throw new Error('Erreur de chargement du fichier CSV');
+      const csvText = await response.text();
 
-      // Grouper par SOV_A3 pour avoir un seul enregistrement par pays (même avec MultiPolygon)
-      const countryMap = new Map();
-      geojson.features.forEach((feature: any) => {
-        const iso = feature.properties.SOV_A3;
-        if (!countryMap.has(iso)) {
-          countryMap.set(iso, feature.properties);
-        }
-      });
-      const uniqueCountries = Array.from(countryMap.values());
+      // Parser le CSV
+      const lines = csvText.split('\n');
+      if (lines.length === 0) return;
 
-      // Récupérer toutes les clés (colonnes) sauf geometry, coordinates et current
-      const allKeys = new Set<string>();
-      uniqueCountries.forEach((country: any) => {
-        Object.keys(country).forEach((key) => {
-          if (key !== 'geometry' && key !== 'coordinates' && key !== 'current') {
-            allKeys.add(key);
-          }
+      const headers = lines[0].split(',');
+      const currentIndex = headers.findIndex(h => h.trim().toLowerCase() === 'current');
+
+      // Filtrer la colonne "current"
+      let newHeaders = headers;
+      let newLines = lines;
+
+      if (currentIndex !== -1) {
+        newHeaders = headers.filter((_, i) => i !== currentIndex);
+        newLines = lines.map(line => {
+          const columns = line.split(',');
+          return columns.filter((_, i) => i !== currentIndex).join(',');
         });
-      });
-      const headers = Array.from(allKeys);
-
-      // Construire le CSV
-      const csvRows = [];
-      csvRows.push(headers.join(','));
-
-      uniqueCountries.forEach((country: any) => {
-        const row = headers.map((header) => {
-          let value = country[header] ?? '';
-          // Échapper les virgules et guillemets
-          if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
-            value = `"${value.replace(/"/g, '""')}"`;
-          }
-          return value;
-        });
-        csvRows.push(row.join(','));
-      });
+      }
 
       // Télécharger le CSV
-      const csvContent = csvRows.join('\n');
+      const csvContent = newLines.join('\n');
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = 'data_media_FOCUS2030.csv';
+      link.target = '_blank';
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
     } catch (error) {
       console.error('Erreur lors du téléchargement CSV:', error);
+    }
+  };
+
+  // Fonction de téléchargement GeoJSON
+  const downloadGeoJSON = async () => {
+    try {
+      const response = await fetch('/world_def.geojson');
+      if (!response.ok) throw new Error('Erreur de chargement du fichier');
+      const geojson = await response.json();
+
+      // Créer une copie sans la propriété 'current'
+      const cleanedGeoJSON = {
+        ...geojson,
+        features: geojson.features.map((feature: any) => {
+          const { current, ...restProperties } = feature.properties;
+          return {
+            ...feature,
+            properties: restProperties
+          };
+        })
+      };
+
+      // Télécharger le GeoJSON
+      const jsonContent = JSON.stringify(cleanedGeoJSON, null, 2);
+      const blob = new Blob([jsonContent], { type: 'application/geo+json;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'data_media_FOCUS2030.geojson';
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    } catch (error) {
+      console.error('Erreur lors du téléchargement GeoJSON:', error);
     }
   };
 
@@ -209,11 +233,11 @@ const MapToggle: React.FC<MapToggleProps> = ({
 
       )}
 
-      {/* 📥 Bouton de téléchargement CSV */}
+      {/* 📥 Bouton de téléchargement avec menu */}
       <Button
         variant="outlined"
         startIcon={<DownloadIcon />}
-        onClick={downloadCSV}
+        onClick={(e) => setDownloadMenuAnchor(e.currentTarget)}
         sx={{
           position: "fixed",
           bottom: 28,
@@ -225,6 +249,7 @@ const MapToggle: React.FC<MapToggleProps> = ({
           fontSize: "11px",
           textTransform: "none",
           boxShadow: 0,
+          fontFamily: "'Open Sans', sans-serif",
           "&:hover": {
             backgroundColor: "rgba(0,0,0,0.05)",
             borderColor: "#555",
@@ -234,6 +259,76 @@ const MapToggle: React.FC<MapToggleProps> = ({
       >
         Télécharger les données
       </Button>
+
+      {/* Menu déroulant */}
+      <Menu
+        anchorEl={downloadMenuAnchor}
+        open={Boolean(downloadMenuAnchor)}
+        onClose={() => setDownloadMenuAnchor(null)}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+        transformOrigin={{
+          vertical: 'bottom',
+          horizontal: 'left',
+        }}
+        sx={{
+          "& .MuiPaper-root": {
+            borderRadius: "12px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+            mt: -1,
+            minWidth: 180,
+          },
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            downloadCSV();
+            setDownloadMenuAnchor(null);
+          }}
+          sx={{
+            fontSize: "12px",
+            fontFamily: "'Open Sans', sans-serif",
+            py: 1.2,
+            "&:hover": {
+              backgroundColor: "rgba(35, 131, 196, 0.08)",
+            },
+          }}
+        >
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.3 }}>
+            <Typography sx={{ fontSize: "12px", fontWeight: 600, fontFamily: "'Open Sans', sans-serif" }}>
+              Format CSV
+            </Typography>
+            <Typography sx={{ fontSize: "10px", color: "#666", fontFamily: "'Open Sans', sans-serif" }}>
+              Données tabulaires sans géométries
+            </Typography>
+          </Box>
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            downloadGeoJSON();
+            setDownloadMenuAnchor(null);
+          }}
+          sx={{
+            fontSize: "12px",
+            fontFamily: "'Open Sans', sans-serif",
+            py: 1.2,
+            "&:hover": {
+              backgroundColor: "rgba(35, 131, 196, 0.08)",
+            },
+          }}
+        >
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.3 }}>
+            <Typography sx={{ fontSize: "12px", fontWeight: 600, fontFamily: "'Open Sans', sans-serif" }}>
+              Format GeoJSON
+            </Typography>
+            <Typography sx={{ fontSize: "10px", color: "#666", fontFamily: "'Open Sans', sans-serif" }}>
+              Données géographiques complètes
+            </Typography>
+          </Box>
+        </MenuItem>
+      </Menu>
 
 
 

@@ -35,7 +35,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
   const [showIndia, setShowIndia] = useState(false);
   const [showEurope, setShowEurope] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<any | null>(null);
-  const [baseProjection, setBaseProjection] = useState<any>(null); // projection fixe pour le graticule
+  const [baseProjection] = useState<any>(null); // projection fixe pour le graticule
   
   // Stockage des interpolations pré-calculées
   const interpolationsRef = useRef<{
@@ -164,25 +164,6 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
         .attr("width", width)
         .attr("height", height)
         .attr("fill", "#ffffffff");
-    }
-
-    // --- Crée le graticule UNE FOIS ---
-    if (!baseProjection) {
-      const proj = d3.geoProjection(geoLarriveeRaw).fitExtent(
-        [[width * 0.05, height * 0.05], [width * 0.95, height * 0.95]],
-        geoData[0]
-      );
-      setBaseProjection(() => proj);
-      const pathBase = d3.geoPath().projection(proj);
-      const graticule = d3.geoGraticule10();
-      svg.append("path")
-        .datum(graticule)
-        .attr("class", "graticule")
-        .attr("fill", "none")
-        .attr("stroke", "#ccccccff")
-        .attr("stroke-width", 0.5)
-        .attr("stroke-dasharray", "2,2")
-        .attr("d", pathBase as any);
     }
 
     // --- Échelles de couleur ---
@@ -380,7 +361,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
       .attr("x", 0)
       .attr("y", -6)
       .style("font-size", "15px")
-      .style("font-weight", 350)
+      .style("font-weight", 380)
       .style("fill", "#201a1aff")
       .text("Mentions dans la presse pour 1 million d'habitants");
   };
