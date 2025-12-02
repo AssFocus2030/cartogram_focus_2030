@@ -46,6 +46,8 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
   const [zoomTransform, setZoomTransform] = useState<any>(d3.zoomIdentity);
   const zoomBehaviorRef = useRef<any>(null);
   const isTransitioning = useRef(false);
+  const isDraggingWipe = useRef(false);
+  const wipePosition = useRef(0); // Position du wipe (0 = carte A, 1 = carte B)
 
   useEffect(() => setShowPMA(true), []);
 
@@ -106,7 +108,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
 
   /** --- DESSIN DE LA CARTE --- */
   const drawMap = (animateColors = true) => {
-    if (geoData.length === 0 || isTransitioning.current) return;
+    if (geoData.length === 0) return;
 
     const svg = d3.select(svgRef.current);
     const tooltip = d3.select(tooltipRef.current);
@@ -154,7 +156,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
     // Calculer la largeur de stroke en fonction du zoom
     const currentScale = zoomTransform.k;
     const baseStrokeWidth = 1 / currentScale;
-    const highlightStrokeWidth = 1.5  / currentScale;
+    const highlightStrokeWidth = 1  / currentScale;
 
     // --- Échelles de couleur ---
     const thresholds = [20, 50, 80, 300];
@@ -183,16 +185,14 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
       showPMA && PMACountriesISO_A3.includes(d.properties.ADM0_A3)
         ? "#e05a55ff"
         : showAfrica && africanISO_A3.includes(d.properties.ADM0_A3)
-        ? "#64965cff"
+        ? "#92b88cff"
         : showIndia && d.properties.ADM0_A3 === INDIA_A3
         ? "#ba5887ff"
         : showEurope && EUROPE_A3.includes(d.properties.ADM0_A3)
         ? "#fdc54a"
         : "white";
 
-
-
-    // --- Glow ---
+    // --- Créer le filtre Glow ---
     const defs = svg.select("defs").empty()
       ? svg.append("defs")
       : svg.select("defs");
@@ -213,6 +213,219 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
         .attr("in", d => d);
     }
 
+    // Créer des groupes séparés pour chaque carte
+    if (geoData.length === 2) {
+      // Groupe pour la carte 0
+      let zoomGroup0 = svg.select<SVGGElement>(".zoom-group-0");
+      if (zoomGroup0.empty()) {
+        zoomGroup0 = svg.insert("g", ".zoom-group").attr("class", "zoom-group-0");
+      }
+      zoomGroup0.attr("transform", zoomTransform.toString());
+      
+      // Groupe pour la carte 1
+      let zoomGroup1 = svg.select<SVGGElement>(".zoom-group-1");
+      if (zoomGroup1.empty()) {
+        zoomGroup1 = svg.insert("g", ".zoom-group").attr("class", "zoom-group-1");
+      }
+      zoomGroup1.attr("transform", zoomTransform.toString());
+      
+      // Dessiner les deux cartes (ordre inversé : carte 1 puis carte 0)
+      [1, 0].forEach(idx => {
+        const targetGroup = svg.select(`.zoom-group-${idx}`);
+        const targetData = geoData[idx];
+        
+        const projection = d3.geoProjection(geoLarriveeRaw).fitExtent(
+          [[width * 0.05, height * 0.05], [width * 0.95, height * 0.95]],
+          targetData
+        );
+        const pathGen = d3.geoPath().projection(projection);
+        
+        targetGroup.selectAll("path.geo").remove();
+        
+        const countries = targetGroup.selectAll("path.geo")
+          .data(targetData.features, (d: any) => d.properties._globalIndex)
+          .join("path")
+          .attr("class", "geo")
+          .attr("d", pathGen as any)
+          .attr("fill", fillColor)
+          .attr("stroke", "white")
+          .attr("stroke-width", baseStrokeWidth)
+          .attr("stroke-linejoin", "round");
+
+        // Appliquer les animations de couleur pour les pays spéciaux
+        if (animateColors) {
+          countries.transition()
+            .duration(800)
+            .ease(d3.easeCubicInOut)
+            .attr("stroke", (d: any) => strokeColor(d))
+            .attr("stroke-width", (d: any) => {
+              const isHighlighted = (showPMA && PMACountriesISO_A3.includes(d.properties.ADM0_A3)) ||
+                (showAfrica && africanISO_A3.includes(d.properties.ADM0_A3)) ||
+                (showIndia && d.properties.ADM0_A3 === INDIA_A3) ||
+                (showEurope && EUROPE_A3.includes(d.properties.ADM0_A3));
+              return isHighlighted ? highlightStrokeWidth : baseStrokeWidth;
+            })
+            .attr("filter", (d: any) => {
+              if (
+                (showPMA && PMACountriesISO_A3.includes(d.properties.ADM0_A3)) ||
+                (showAfrica && africanISO_A3.includes(d.properties.ADM0_A3)) ||
+                (showIndia && d.properties.ADM0_A3 === INDIA_A3) ||
+                (showEurope && EUROPE_A3.includes(d.properties.ADM0_A3))
+              ) return "url(#inner-glow)";
+              return null;
+            });
+        } else {
+          // Appliquer immédiatement sans animation
+          countries
+            .attr("stroke", (d: any) => strokeColor(d))
+            .attr("stroke-width", (d: any) => {
+              const isHighlighted = (showPMA && PMACountriesISO_A3.includes(d.properties.ADM0_A3)) ||
+                (showAfrica && africanISO_A3.includes(d.properties.ADM0_A3)) ||
+                (showIndia && d.properties.ADM0_A3 === INDIA_A3) ||
+                (showEurope && EUROPE_A3.includes(d.properties.ADM0_A3));
+              return isHighlighted ? highlightStrokeWidth : baseStrokeWidth;
+            })
+            .attr("filter", (d: any) => {
+              if (
+                (showPMA && PMACountriesISO_A3.includes(d.properties.ADM0_A3)) ||
+                (showAfrica && africanISO_A3.includes(d.properties.ADM0_A3)) ||
+                (showIndia && d.properties.ADM0_A3 === INDIA_A3) ||
+                (showEurope && EUROPE_A3.includes(d.properties.ADM0_A3))
+              ) return "url(#inner-glow)";
+              return null;
+            });
+        }
+
+        // --- Tooltip et interactions ---
+        const uniqueCountries = Array.from(
+          new Map(
+            targetData.features.map((f: { properties: { ADM0_A3: any } }) => [f.properties.ADM0_A3, f])
+          ).values()
+        ) as any[];
+        const totalWithoutFrance = d3.sum(
+          uniqueCountries
+            .filter((f: any) => f.properties.ADM0_A3 !== "FRA" && f.properties.ADM0_A3 !== "NOM")
+            .map((f: any) => f.properties.current ?? 0)
+        );
+
+        countries
+          .on("mouseover", function (_event: any, d: any) {
+            const iso = d.properties.ADM0_A3;
+            svg.selectAll("path.geo")
+              .filter((f: any) => f.properties.ADM0_A3 === iso)
+              .attr("stroke-width", 3 / currentScale)
+              .attr("fill-opacity", 0.6);
+
+            const p = d.properties;
+            let tooltipContent;
+            if (p.ADM0_A3 === "FRA") {
+              tooltipContent = `
+                <span style="font-size:14px; color:#2383c4; font-weight:bold;">France</span><br/>
+                Mentions : <strong>Non renseigné</strong><br/>
+                Mentions / 1M hab. : <strong>Non renseigné</strong><br/>
+                Part du total : <strong>Non renseigné</strong>
+              `;
+            } else {
+              const name = p.NAME_FR || p.NAMEfr || "Inconnu";
+              const current = p.current ?? 0;
+              const pop = p.POP_EST ?? 0;
+              const ratio = pop ? (current / pop) * 1e6 : 0;
+              const percentage = totalWithoutFrance ? (current / totalWithoutFrance) * 100 : 0;
+
+              tooltipContent = `
+                <span style="font-size:14px; color:#2383c4; font-weight:bold;">${name}</span><br/>
+                Mentions : <strong>${current.toLocaleString()}</strong><br/>
+                Mentions / 1M hab. : <strong>${Math.round(ratio)}</strong><br/>
+                Part du total : <strong>${percentage.toFixed(2)}%</strong>
+              `;
+            }
+
+            tooltip.style("display", "block").html(tooltipContent);
+          })
+          .on("mousemove", (event) => {
+            const tooltipNode = tooltipRef.current;
+            if (!tooltipNode) return;
+            const margin = 10;
+            const tooltipWidth = tooltipNode.offsetWidth;
+            const tooltipHeight = tooltipNode.offsetHeight;
+            let left = event.clientX + margin;
+            let top = event.clientY + margin;
+            if (left + tooltipWidth > window.innerWidth - margin)
+              left = event.clientX - tooltipWidth - margin;
+            if (top + tooltipHeight > window.innerHeight - margin)
+              top = event.clientY - tooltipHeight - margin;
+            tooltip.style("left", left + "px").style("top", top + "px");
+          })
+          .on("mouseout", function (_, d: any) {
+            const isHighlighted = (showPMA && PMACountriesISO_A3.includes(d.properties.ADM0_A3)) ||
+              (showAfrica && africanISO_A3.includes(d.properties.ADM0_A3)) ||
+              (showIndia && d.properties.ADM0_A3 === INDIA_A3) ||
+              (showEurope && EUROPE_A3.includes(d.properties.ADM0_A3));
+            
+            svg.selectAll("path.geo")
+              .filter((f: any) => f.properties.ADM0_A3 === d.properties.ADM0_A3)
+              .transition()
+              .duration(300)
+              .attr("stroke-width", isHighlighted ? highlightStrokeWidth : baseStrokeWidth)
+              .attr("fill-opacity", 1);
+            tooltip.style("display", "none");
+          })
+          .on("click", (_, d: any) => {
+            setSelectedCountry(d.properties);
+            setIsChartVisible(false);
+            setTimeout(() => setIsChartVisible(true), 10);
+          });
+      });
+      
+      // --- Légende (à afficher même avec le wipe) ---
+      const legendData = [0, 20, 50, 80, 300];
+      const legend = svg.select(".legend");
+      if (legend.empty()) {
+        const newLegend = svg.append("g").attr("class", "legend").attr("transform", `translate(20, 30)`);
+        const legendYOffset = 6;
+
+        newLegend.selectAll("rect")
+          .data(legendData)
+          .enter()
+          .append("rect")
+          .attr("x", 0)
+          .attr("y", (_, i) => i * 22 + legendYOffset)
+          .attr("width", 18)
+          .attr("height", 18)
+          .attr("rx", 3)
+          .attr("ry", 3)
+          .attr("fill", (d) => colorScale(d + 0.001))
+          .attr("stroke-width", 1.5);
+
+        newLegend.selectAll("text")
+          .data(legendData)
+          .enter()
+          .append("text")
+          .attr("x", 26)
+          .attr("y", (_, i) => i * 22 + 13 + legendYOffset)
+          .style("font-size", "14px")
+          .style("fill", "#646464ff")
+          .style("font-weight", 390)
+          .text((d, i) =>
+            i < legendData.length - 1 ? `${d}–${legendData[i + 1]}` : `>${d}`
+          );
+
+        newLegend.append("text")
+          .attr("x", 0)
+          .attr("y", -6)
+          .style("font-size", "15px")
+          .style("font-weight", 380)
+          .style("fill", "#201a1aff")
+          .text("Mentions dans la presse pour 1 million d'habitants");
+      }
+      
+      // Initialiser ou mettre à jour le wipe
+      const initialX = wipePosition.current * width;
+      updateWipeClip(initialX);
+      
+      return; // Sortir car on a déjà dessiné
+    }
+
     // --- Dessin des pays ---
     const countries = zoomGroup.selectAll("path.geo")
       .data(geoData[currentIndex].features, (d: any) => d.properties._globalIndex)
@@ -224,18 +437,9 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
       .attr("stroke-width", baseStrokeWidth)
       .attr("stroke-linejoin", "round");
 
-    // Fade in uniquement si on est en transition
-    if (isTransitioning.current) {
-      countries.style("opacity", 0)
-        .transition()
-        .duration(800)
-        .ease(d3.easeCubicInOut)
-        .style("opacity", 1);
-    }
-
     if (animateColors) {
       countries.transition()
-        .duration(2000)
+        .duration(800)
         .ease(d3.easeCubicInOut)
         .attr("stroke", (d: any) => strokeColor(d))
         .attr("stroke-width", (d: any) => {
@@ -387,31 +591,128 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
 
   useEffect(() => drawMap(true), [showPMA, showAfrica, showIndia, showEurope]);
 
-  /** --- TRANSITION ENTRE CARTES (CROSSFADE) --- */
+  /** --- TRANSITION ENTRE CARTES (WIPE EFFECT) --- */
   const changeMap = (index: number) => {
     if (geoData.length === 0 || index === currentIndex) return;
     
     isTransitioning.current = true;
-    const svg = d3.select(svgRef.current);
-    const zoomGroup = svg.select(".zoom-group");
+    const targetPosition = index; // 0 ou 1
     
-    // Faire un fade out de la carte actuelle avec easing
-    zoomGroup.selectAll("path.geo")
-      .transition()
-      .duration(800)
+    animateWipe(targetPosition);
+  };
+
+  const animateWipe = (targetPosition: number) => {
+    const svg = d3.select(svgRef.current);
+    const width = svgRef.current?.clientWidth || window.innerWidth;
+    
+    const startX = wipePosition.current * width;
+    const endX = targetPosition * width;
+    
+    // Créer/mettre à jour le clipPath
+    updateWipeClip(startX);
+    
+    // Animer
+    svg.transition()
+      .duration(1200)
       .ease(d3.easeCubicInOut)
-      .style("opacity", 0)
-      .end()
-      .then(() => {
-        // Une fois le fade out terminé, changer l'index
-        setCurrentIndex(index);
-        isTransitioning.current = false;
+      .tween("wipe", function() {
+        const interpolate = d3.interpolate(startX, endX);
+        return function(t) {
+          const x = interpolate(t);
+          updateWipeClip(x);
+          wipePosition.current = x / width;
+        };
       })
-      .catch(() => {
-        // En cas d'interruption de la transition
-        setCurrentIndex(index);
+      .on("end", () => {
         isTransitioning.current = false;
+        setCurrentIndex(targetPosition);
       });
+  };
+
+  const updateWipeClip = (xPosition: number) => {
+    const svg = d3.select(svgRef.current);
+    const width = svgRef.current?.clientWidth || window.innerWidth;
+    
+    let defs = svg.select<SVGDefsElement>("defs");
+    if (defs.empty()) {
+      defs = svg.append("defs");
+    }
+    
+    // Créer ou mettre à jour le clipPath pour la carte A (visible à gauche)
+    let clipPathA = defs.select<SVGClipPathElement>("#wipe-clip-a");
+    if (clipPathA.empty()) {
+      clipPathA = defs.append("clipPath").attr("id", "wipe-clip-a");
+      clipPathA.append("rect");
+    }
+    clipPathA.select("rect")
+      .attr("x", 0)
+      .attr("y", 0)
+      .attr("width", xPosition)
+      .attr("height", "100%");
+    
+    // Créer ou mettre à jour le clipPath pour la carte B (visible à droite)
+    let clipPathB = defs.select<SVGClipPathElement>("#wipe-clip-b");
+    if (clipPathB.empty()) {
+      clipPathB = defs.append("clipPath").attr("id", "wipe-clip-b");
+      clipPathB.append("rect");
+    }
+    clipPathB.select("rect")
+      .attr("x", xPosition)
+      .attr("y", 0)
+      .attr("width", width - xPosition)
+      .attr("height", "100%");
+    
+    // Appliquer les clips aux groupes correspondants (inversé)
+    svg.select(".zoom-group-1").attr("clip-path", "url(#wipe-clip-a)");
+    svg.select(".zoom-group-0").attr("clip-path", "url(#wipe-clip-b)");
+    
+    // Créer la ligne de séparation
+    let separatorLine = svg.select<SVGLineElement>(".wipe-separator");
+    if (separatorLine.empty()) {
+      separatorLine = svg.append("line")
+        .attr("class", "wipe-separator")
+        .attr("stroke", "#2383c4")
+        .attr("stroke-width", 3)
+        .style("pointer-events", "none")
+        .style("cursor", "ew-resize");
+    }
+    separatorLine
+      .attr("x1", xPosition)
+      .attr("y1", 0)
+      .attr("x2", xPosition)
+      .attr("y2", "100%");
+    
+    // Zone de drag invisible
+    let dragZone = svg.select<SVGRectElement>(".wipe-drag-zone");
+    if (dragZone.empty()) {
+      dragZone = svg.append("rect")
+        .attr("class", "wipe-drag-zone")
+        .attr("fill", "transparent")
+        .attr("height", "100%")
+        .style("cursor", "ew-resize")
+        .call(d3.drag()
+          .on("start", () => {
+            isDraggingWipe.current = true;
+            isTransitioning.current = true;
+          })
+          .on("drag", (event) => {
+            const width = svgRef.current?.clientWidth || window.innerWidth;
+            const newX = Math.max(0, Math.min(width, event.x));
+            updateWipeClip(newX);
+            wipePosition.current = newX / width;
+          })
+          .on("end", () => {
+            isDraggingWipe.current = false;
+            isTransitioning.current = false;
+            const finalPosition = wipePosition.current > 0.5 ? 1 : 0;
+            setCurrentIndex(finalPosition);
+            animateWipe(finalPosition);
+          }) as any
+        );
+    }
+    dragZone
+      .attr("x", xPosition - 20)
+      .attr("width", 40);
   };
 
   return (
