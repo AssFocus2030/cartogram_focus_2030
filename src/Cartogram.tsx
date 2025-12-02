@@ -20,6 +20,7 @@ type GeoJSONType = any;
 
 interface CartogramProps {
   geoUrls: string[];
+  onIndexChange?: (index: number) => void;
 }
 
 const INDIA_A3 = "IND";
@@ -30,7 +31,7 @@ const EUROPE_A3 = [
   "ESP","SWE","CHE","GBR","UKR","VAT","MCO",
 ];
 
-const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
+const Cartogram: React.FC<CartogramProps> = ({ geoUrls, onIndexChange }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [geoData, setGeoData] = useState<GeoJSONType[]>([]);
@@ -626,6 +627,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
       .on("end", () => {
         isTransitioning.current = false;
         setCurrentIndex(targetPosition);
+        if (onIndexChange) onIndexChange(targetPosition); // Informer le parent
       });
   };
 
@@ -706,6 +708,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
             isTransitioning.current = false;
             const finalPosition = wipePosition.current > 0.5 ? 1 : 0;
             setCurrentIndex(finalPosition);
+            if (onIndexChange) onIndexChange(finalPosition); // Informer le parent
             animateWipe(finalPosition);
           }) as any
         );

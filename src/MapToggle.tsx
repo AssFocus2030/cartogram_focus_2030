@@ -55,6 +55,11 @@ const MapToggle: React.FC<MapToggleProps> = ({
   const percentageIndia = useIndiaPercentage();
   const percentagePMA = usePMAPercentage();
 
+  // ✅ Synchroniser localChecked avec le prop checked (pour le wipe)
+  useEffect(() => {
+    setLocalChecked(checked);
+  }, [checked]);
+
   // ✅ Affiche le message respirant pendant 3 secondes
   useEffect(() => {
     const timer = setTimeout(() => setShowArrowHint(false), 3000);
@@ -137,13 +142,12 @@ const MapToggle: React.FC<MapToggleProps> = ({
   };
 
   useEffect(() => {
-    if (userInteracted) return;
+    if (userInteracted || checked) return; // Ne pas animer si déjà changé par le wipe
     const timer = setTimeout(() => {
-      setLocalChecked(true);
       onChange(true);
     }, 2600);
     return () => clearTimeout(timer);
-  }, [onChange, userInteracted]);
+  }, [onChange, userInteracted, checked]);
 
   const handleNextFromPMA = () => {
     setShowPMABox(false);
