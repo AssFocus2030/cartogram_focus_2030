@@ -45,25 +45,20 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
   const [baseProjection] = useState<any>(null); // projection fixe pour le graticule
   const [zoomTransform, setZoomTransform] = useState<any>(d3.zoomIdentity);
   const zoomBehaviorRef = useRef<any>(null);
-  const isTransitioning = useRef(false);
+  
+  // Stockage des interpolations pré-calculées
+  const interpolationsRef = useRef<{
+    forward: Array<(t: number) => string>;  // 0 -> 1
+    backward: Array<(t: number) => string>; // 1 -> 0
+  } | null>(null);
 
   useEffect(() => setShowPMA(true), []);
 
   const normalizeGeoJSON = (geo: GeoJSONType) => {
     const features: any[] = [];
-    
-    // Trier d'abord les features par ADM0_A3 pour avoir un ordre cohérent
-    const sortedFeatures = [...geo.features].sort((a, b) => {
-      const idA = a.properties.ADM0_A3 || "";
-      const idB = b.properties.ADM0_A3 || "";
-      return idA.localeCompare(idB);
-    });
-    
-    sortedFeatures.forEach((f: any) => {
+    geo.features.forEach((f: any) => {
       if (f.properties.ADM0_A3 === "ATA") return;
-      if (f.geometry.type === "Polygon") {
-        features.push(f);
-      }
+      if (f.geometry.type === "Polygon") features.push(f);
       else if (f.geometry.type === "MultiPolygon") {
         f.geometry.coordinates.forEach((coords: any) =>
           features.push({
@@ -74,12 +69,6 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
         );
       }
     });
-    
-    // Attribuer un index global à chaque feature après le tri
-    features.forEach((f, index) => {
-      f.properties._globalIndex = index;
-    });
-    
     return { type: "FeatureCollection", features };
   };
 
@@ -102,11 +91,65 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
     fetchAllGeo();
   }, [geoUrls]);
 
+  // Pré-calcul des interpolations Flubber au chargement
+  useEffect(() => {
+    if (geoData.length !== 2 || !svgRef.current) return;
+
+    const width = svgRef.current.clientWidth || window.innerWidth;
+    const height = svgRef.current.clientHeight || window.innerHeight;
+
+    // Créer les projections pour chaque carte
+    const projection0 = d3.geoProjection(geoLarriveeRaw).fitExtent(
+      [[width * 0.05, height * 0.05], [width * 0.95, height * 0.95]],
+      geoData[0]
+    );
+    const projection1 = d3.geoProjection(geoLarriveeRaw).fitExtent(
+      [[width * 0.05, height * 0.05], [width * 0.95, height * 0.95]],
+      geoData[1]
+    );
+
+    const path0 = d3.geoPath().projection(projection0);
+    const path1 = d3.geoPath().projection(projection1);
+
+    const from = geoData[0].features;
+    const to = geoData[1].features;
+    const maxLen = Math.max(from.length, to.length);
+
+    // Feature vide pour padding
+    const dummy = {
+      type: "Feature",
+      geometry: { type: "Polygon", coordinates: [[[0, 0], [0, 0], [0, 0], [0, 0]]] },
+      properties: {},
+    };
+
+    const fromPadded = [...from, ...Array(maxLen - from.length).fill(dummy)];
+    const toPadded = [...to, ...Array(maxLen - to.length).fill(dummy)];
+
+    // Générer tous les paths
+    const paths0 = fromPadded.map((f) => path0(f) as string);
+    const paths1 = toPadded.map((f) => path1(f) as string);
+
+    // Pré-calculer toutes les interpolations
+    console.log("🔄 Pré-calcul des interpolations Flubber...");
+    const forwardInterpolations = paths0.map((p0, i) => 
+      flubber.interpolate(p0, paths1[i])
+    );
+    const backwardInterpolations = paths1.map((p1, i) => 
+      flubber.interpolate(p1, paths0[i])
+    );
+
+    interpolationsRef.current = {
+      forward: forwardInterpolations,
+      backward: backwardInterpolations,
+    };
+    console.log("✅ Interpolations pré-calculées !");
+  }, [geoData]);
+
   
 
   /** --- DESSIN DE LA CARTE --- */
   const drawMap = (animateColors = true) => {
-    if (geoData.length === 0 || isTransitioning.current) return;
+    if (geoData.length === 0) return;
 
     const svg = d3.select(svgRef.current);
     const tooltip = d3.select(tooltipRef.current);
@@ -215,7 +258,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
 
     // --- Dessin des pays ---
     const countries = zoomGroup.selectAll("path.geo")
-      .data(geoData[currentIndex].features, (d: any) => d.properties._globalIndex)
+      .data(geoData[currentIndex].features)
       .join("path")
       .attr("class", "geo")
       .attr("d", path as any)
@@ -224,18 +267,9 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
       .attr("stroke-width", baseStrokeWidth)
       .attr("stroke-linejoin", "round");
 
-    // Fade in uniquement si on est en transition
-    if (isTransitioning.current) {
-      countries.style("opacity", 0)
-        .transition()
-        .duration(800)
-        .ease(d3.easeCubicInOut)
-        .style("opacity", 1);
-    }
-
     if (animateColors) {
       countries.transition()
-        .duration(2000)
+        .duration(1000)
         .ease(d3.easeCubicInOut)
         .attr("stroke", (d: any) => strokeColor(d))
         .attr("stroke-width", (d: any) => {
@@ -387,31 +421,44 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls }) => {
 
   useEffect(() => drawMap(true), [showPMA, showAfrica, showIndia, showEurope]);
 
-  /** --- TRANSITION ENTRE CARTES (CROSSFADE) --- */
+  /** --- TRANSITION ENTRE CARTES --- */
   const changeMap = (index: number) => {
-    if (geoData.length === 0 || index === currentIndex) return;
+    if (geoData.length === 0 || index === currentIndex || !interpolationsRef.current) return;
     
-    isTransitioning.current = true;
     const svg = d3.select(svgRef.current);
-    const zoomGroup = svg.select(".zoom-group");
+    const width = svgRef.current?.clientWidth || window.innerWidth;
+    const height = svgRef.current?.clientHeight || window.innerHeight;
+
+    const projection = d3.geoProjection(geoLarriveeRaw).fitExtent(
+      [[width * 0.05, height * 0.05], [width * 0.95, height * 0.95]],
+      geoData[index]
+    );
+
+    const path = d3.geoPath().projection(projection);
+    const to = geoData[index].features;
+    const maxLen = Math.max(geoData[0].features.length, geoData[1].features.length);
+    const dummy = {
+      type: "Feature",
+      geometry: { type: "Polygon", coordinates: [[[0, 0], [0, 0], [0, 0], [0, 0]]] },
+      properties: {},
+    };
+    const toPadded = [...to, ...Array(maxLen - to.length).fill(dummy)];
+    const toPaths = toPadded.map((f) => path(f) as string);
     
-    // Faire un fade out de la carte actuelle avec easing
-    zoomGroup.selectAll("path.geo")
+    // Utiliser les interpolations pré-calculées
+    const interpolations = index === 1 
+      ? interpolationsRef.current.forward 
+      : interpolationsRef.current.backward;
+
+    const paths = svg.selectAll("path.geo").data(toPaths);
+
+    paths.join("path")
+      .attr("class", "geo")
       .transition()
-      .duration(800)
-      .ease(d3.easeCubicInOut)
-      .style("opacity", 0)
-      .end()
-      .then(() => {
-        // Une fois le fade out terminé, changer l'index
-        setCurrentIndex(index);
-        isTransitioning.current = false;
-      })
-      .catch(() => {
-        // En cas d'interruption de la transition
-        setCurrentIndex(index);
-        isTransitioning.current = false;
-      });
+      .duration(1000)
+      .attrTween("d", (_, i) => interpolations[i]);
+
+    setTimeout(() => setCurrentIndex(index), 1000);
   };
 
   return (

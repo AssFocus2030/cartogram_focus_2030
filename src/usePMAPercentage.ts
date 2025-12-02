@@ -6,7 +6,7 @@ export function usePMAPercentage() {
   const [percentage, setPercentage] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch("/world_def.geojson")
+    fetch("/world.geojson")
       .then(res => res.json())
       .then(
         (

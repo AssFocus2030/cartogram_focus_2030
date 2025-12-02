@@ -5,5 +5,5 @@ export const africanISO_A3 = [
   "MWI","MLI","MRT","MUS","MAR","MOZ","NAM","NER","NGA","RWA",
   "STP","SEN","SYC","SLE","SOM","ZAF","SSD","SDN","TZA","TGO",
   "TUN","UGA","ZMB","ZWE", "SOL",
-  "ESH", "BLM", "SAH","SDS", // Sahara occidental
+  "ESH", "BLM", "SAH","SDS",
 ];

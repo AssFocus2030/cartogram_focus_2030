@@ -2,8 +2,8 @@ import React, { useEffect } from "react";
 import Cartogram from "./Cartogram.tsx";
 
 const geoUrls = [
-  "/world_def.geojson",
-  "/Cartogram_m.geojson",
+  "/world.geojson",
+  "/cartogram.geojson",
 ];
 
 

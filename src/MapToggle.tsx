@@ -104,7 +104,7 @@ const MapToggle: React.FC<MapToggleProps> = ({
   // Fonction de téléchargement GeoJSON
   const downloadGeoJSON = async () => {
     try {
-      const response = await fetch('/world_def.geojson');
+      const response = await fetch('/world.geojson');
       if (!response.ok) throw new Error('Erreur de chargement du fichier');
       const geojson = await response.json();
 
