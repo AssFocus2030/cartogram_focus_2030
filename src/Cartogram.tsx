@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
-import * as flubber from "flubber";
+
 // @ts-ignore
 import { geoLarriveeRaw } from "d3-geo-projection";
 
