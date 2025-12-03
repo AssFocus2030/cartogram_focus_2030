@@ -186,7 +186,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls, onIndexChange }) => {
       showPMA && PMACountriesISO_A3.includes(d.properties.ADM0_A3)
         ? "#e05a55ff"
         : showAfrica && africanISO_A3.includes(d.properties.ADM0_A3)
-        ? "#92b88cff"
+        ? "#5e9256ff"
         : showIndia && d.properties.ADM0_A3 === INDIA_A3
         ? "#ba5887ff"
         : showEurope && EUROPE_A3.includes(d.properties.ADM0_A3)
@@ -683,6 +683,32 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls, onIndexChange }) => {
       .attr("y1", 0)
       .attr("x2", xPosition)
       .attr("y2", "100%");
+    
+    // Créer la languette de préhension
+    let wipeHandle = svg.select<SVGGElement>(".wipe-handle");
+    if (wipeHandle.empty()) {
+      wipeHandle = svg.append("g")
+        .attr("class", "wipe-handle")
+        .style("pointer-events", "none");
+      
+      // Cercle avec contour noir seulement
+      wipeHandle.append("circle")
+        .attr("class", "handle-circle")
+        .attr("cx", 15)
+        .attr("cy", 15)
+        .attr("r", 12)
+        .attr("fill", "white")
+        .attr("stroke", "#0471b0ff")
+        .attr("stroke-width", 2.5)
+        .attr("opacity", 1);
+      
+  
+    }
+    
+    // Positionner la languette au centre vertical
+    const handleSize = 30;
+    const yCenter = (svgRef.current?.clientHeight || window.innerHeight) / 2;
+    wipeHandle.attr("transform", `translate(${xPosition - 15}, ${yCenter - handleSize / 2})`);
     
     // Zone de drag invisible
     let dragZone = svg.select<SVGRectElement>(".wipe-drag-zone");

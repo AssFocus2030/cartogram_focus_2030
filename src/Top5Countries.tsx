@@ -102,41 +102,45 @@ const Top5Countries: React.FC<Top5CountriesProps> = ({ geoData, onClose }) => {
             ? "translate(-50%, -50%) scale(1)" 
             : "translate(-50%, -50%) scale(0.8)",
           bgcolor: "white",
-          p: 2.5,
+          p: 2,
           borderRadius: 3,
           boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
           zIndex: 2000,
-          maxWidth: 420,
-          width: "40%",
+          maxWidth: 380,
+          width: "35%",
+          maxHeight: "70vh",
           opacity: isVisible ? 1 : 0,
           transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
       {/* Header */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0 }}>
-        <Typography variant="h6" sx={{ fontWeight: 600, color: "#2383c4", fontFamily: "'Open Sans', sans-serif", fontSize: "16px" }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0.5 }}>
+        <Typography variant="h6" sx={{ fontWeight: 600, color: "#2383c4", fontFamily: "'Open Sans', sans-serif", fontSize: "15px" }}>
           Top 5 des pays
         </Typography>
         <IconButton onClick={handleClose} size="small">
-          <CloseIcon />
+          <CloseIcon fontSize="small" />
         </IconButton>
       </Box>
 
       {/* Système d'onglets */}
-      <Box sx={{ borderBottom: "2px solid #e0e0e0", mb: 2, mt: 1 }}>
+      <Box sx={{ borderBottom: "2px solid #e0e0e0", mb: 1.5, mt: 0.5 }}>
         <Box sx={{ display: "flex", gap: 0 }}>
           <Box
             onClick={() => setSelectedPanel("top")}
             sx={{
               flex: 1,
-              py: 1.5,
+              py: 1,
               textAlign: "center",
               cursor: "pointer",
               borderBottom: "3px solid",
               borderColor: selectedPanel === "top" ? "#2383c4" : "transparent",
               color: selectedPanel === "top" ? "#2383c4" : "#666",
               fontWeight: selectedPanel === "top" ? 600 : 500,
-              fontSize: "13px",
+              fontSize: "12px",
               fontFamily: "'Open Sans', sans-serif",
               transition: "all 0.2s",
               "&:hover": {
@@ -151,14 +155,14 @@ const Top5Countries: React.FC<Top5CountriesProps> = ({ geoData, onClose }) => {
             onClick={() => setSelectedPanel("bottom")}
             sx={{
               flex: 1,
-              py: 1.5,
+              py: 1,
               textAlign: "center",
               cursor: "pointer",
               borderBottom: "3px solid",
               borderColor: selectedPanel === "bottom" ? "#e05a55" : "transparent",
               color: selectedPanel === "bottom" ? "#e05a55" : "#666",
               fontWeight: selectedPanel === "bottom" ? 600 : 500,
-              fontSize: "13px",
+              fontSize: "12px",
               fontFamily: "'Open Sans', sans-serif",
               transition: "all 0.2s",
               "&:hover": {
@@ -173,7 +177,7 @@ const Top5Countries: React.FC<Top5CountriesProps> = ({ geoData, onClose }) => {
       </Box>
 
       {/* Contenu dynamique selon le panneau sélectionné */}
-      <Box>
+      <Box sx={{ overflowY: "auto", flex: 1 }}>
         {(selectedPanel === "top" ? top5ByMentions : bottom5ByMentions).map((country, index) => (
           <Box
             key={country.iso}
@@ -181,8 +185,8 @@ const Top5Countries: React.FC<Top5CountriesProps> = ({ geoData, onClose }) => {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              py: 1.5,
-              px: 2,
+              py: 1.2,
+              px: 1.5,
               mb: 1,
               borderRadius: 2,
               bgcolor: index === 0 && selectedPanel === "top" ? "#e9eff9" : "#f8f9fa",
@@ -190,13 +194,13 @@ const Top5Countries: React.FC<Top5CountriesProps> = ({ geoData, onClose }) => {
               borderColor: index === 0 && selectedPanel === "top" ? "#2383c4" : "#e0e0e0",
             }}
           >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
               <Typography
                 sx={{
                   fontWeight: 700,
-                  fontSize: "18px",
+                  fontSize: "16px",
                   color: index === 0 && selectedPanel === "top" ? "#2383c4" : "#666",
-                  minWidth: 25,
+                  minWidth: 20,
                   fontFamily: "'Open Sans', sans-serif",
                 }}
               >
@@ -205,7 +209,7 @@ const Top5Countries: React.FC<Top5CountriesProps> = ({ geoData, onClose }) => {
               <Typography
                 sx={{
                   fontWeight: 500,
-                  fontSize: "14px",
+                  fontSize: "13px",
                   fontFamily: "'Open Sans', sans-serif",
                 }}
               >
@@ -215,7 +219,7 @@ const Top5Countries: React.FC<Top5CountriesProps> = ({ geoData, onClose }) => {
             <Typography
               sx={{
                 fontWeight: 600,
-                fontSize: "14px",
+                fontSize: "13px",
                 color: selectedPanel === "bottom" ? "#e05a55" : "#2383c4",
                 fontFamily: "'Open Sans', sans-serif",
               }}

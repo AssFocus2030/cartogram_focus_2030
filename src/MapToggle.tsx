@@ -46,6 +46,11 @@ const MapToggle: React.FC<MapToggleProps> = ({
   const [showAfricaBox, setShowAfricaBox] = useState(false);
   const [showIndiaBox, setShowIndiaBox] = useState(false);
   const [showEuropeBox, setShowEuropeBox] = useState(false);
+  
+  const [pmaMinimized, setPmaMinimized] = useState(false);
+  const [africaMinimized, setAfricaMinimized] = useState(false);
+  const [indiaMinimized, setIndiaMinimized] = useState(false);
+  const [europeMinimized, setEuropeMinimized] = useState(false);
 
   const [showArrowHint, setShowArrowHint] = useState(true); // 👈 affichage temporaire de l'indication
   const [downloadMenuAnchor, setDownloadMenuAnchor] = useState<null | HTMLElement>(null);
@@ -432,53 +437,71 @@ const MapToggle: React.FC<MapToggleProps> = ({
             fontSize: "11px",
             lineHeight: 1.3,
             fontFamily: "'Open Sans', sans-serif",
+            transition: "all 0.3s ease",
           }}
         >
-          <Typography
-            variant="subtitle2"
-            sx={{
-              fontWeight: "bold",
-              mb: 0,
-              color: "#ba2f33ff",
-              fontSize: "12px",
-              fontFamily: "'Open Sans', sans-serif",
-            }}
-          >
-             44 pays les plus vulnérables et les plus défavorisés
-          </Typography>
-          {percentagePMA !== null ? (
-            <Typography variant="body2" sx={{ fontSize: "11px", fontFamily: "'Open Sans', sans-serif" }}>
-  Les <strong>44 pays les plus vulnérables</strong>, où se concentrent pourtant les
-  principaux défis du développement, ne représentent que{" "}
-  <strong>{percentagePMA.toFixed(0)}%</strong> des pays mentionnés
-  dans les <strong>médias français</strong>.<br />Source : Classification des Nations unies des pays les moins avancés.
-</Typography>
-
-          ) : (
-            <Typography variant="body2" sx={{ color: "#888", fontSize: "11px", fontFamily: "'Open Sans', sans-serif" }}>
-              Calcul du pourcentage en cours...
-            </Typography>
-          )}
-          <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={handleNextFromPMA}
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Typography
+              variant="subtitle2"
               sx={{
-                borderRadius: "16px",
-                backgroundColor: "transparent",
-                borderColor: "#888",
-                color: "#444",
-                fontSize: "11px",
-                "&:hover": {
-                  backgroundColor: "rgba(0,0,0,0.05)",
-                  borderColor: "#555",
-                },
+                fontWeight: "bold",
+                mb: 0,
+                color: "#ba2f33ff",
+                fontSize: "12px",
+                fontFamily: "'Open Sans', sans-serif",
               }}
             >
-              Suivant
-            </Button>
+              44 pays les plus vulnérables et les plus défavorisés
+            </Typography>
+            <IconButton
+              size="small"
+              onClick={() => setPmaMinimized(!pmaMinimized)}
+              sx={{ p: 0, color: "#ba2f33ff", ml: 1 }}
+            >
+              {pmaMinimized ? (
+                <InfoOutlinedIcon fontSize="small" />
+              ) : (
+                <ChevronRightIcon fontSize="small" />
+              )}
+            </IconButton>
           </Box>
+          
+          {!pmaMinimized && (
+            <>
+              {percentagePMA !== null ? (
+                <Typography variant="body2" sx={{ fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5 }}>
+                  Les <strong>44 pays les plus vulnérables</strong>, où se concentrent pourtant les
+                  principaux défis du développement, ne représentent que{" "}
+                  <strong>{percentagePMA.toFixed(0)}%</strong> des pays mentionnés
+                  dans les <strong>médias français</strong>.<br />Source : Classification des Nations unies des pays les moins avancés.
+                </Typography>
+              ) : (
+                <Typography variant="body2" sx={{ color: "#888", fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5 }}>
+                  Calcul du pourcentage en cours...
+                </Typography>
+              )}
+              <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleNextFromPMA}
+                  sx={{
+                    borderRadius: "16px",
+                    backgroundColor: "transparent",
+                    borderColor: "#888",
+                    color: "#444",
+                    fontSize: "11px",
+                    "&:hover": {
+                      backgroundColor: "rgba(0,0,0,0.05)",
+                      borderColor: "#555",
+                    },
+                  }}
+                >
+                  Suivant
+                </Button>
+              </Box>
+            </>
+          )}
         </Box>
       </Slide>
 
@@ -498,69 +521,88 @@ const MapToggle: React.FC<MapToggleProps> = ({
             fontSize: "11px",
             lineHeight: 1.3,
             fontFamily: "'Open Sans', sans-serif",
+            transition: "all 0.3s ease",
           }}
         >
-          <Typography
-            variant="subtitle2"
-            sx={{
-              fontWeight: "bold",
-              mb: 0,
-              color: "#155c22ff",
-              fontSize: "12px",
-              fontFamily: "'Open Sans', sans-serif",
-            }}
-          >
-            Afrique
-          </Typography>
-          {percentageAfrica !== null ? (
-            <Typography variant="body2" sx={{ fontSize: "11px", fontFamily: "'Open Sans', sans-serif" }}>
-              <strong>{percentageAfrica.toFixed(0)}%</strong> des mentions dans
-              les médias français concernent les <strong>54</strong> pays du
-              continent africain.
-            </Typography>
-          ) : (
-            <Typography variant="body2" sx={{ color: "#888", fontSize: "11px", fontFamily: "'Open Sans', sans-serif" }}>
-              Calcul du pourcentage en cours...
-            </Typography>
-          )}
-          <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={handlePrevFromAfrica}
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Typography
+              variant="subtitle2"
               sx={{
-                borderRadius: "16px",
-                backgroundColor: "transparent",
-                borderColor: "#888",
-                color: "#444",
-                fontSize: "11px",
-                "&:hover": {
-                  backgroundColor: "rgba(0,0,0,0.05)",
-                  borderColor: "#555",
-                },
+                fontWeight: "bold",
+                mb: 0,
+                color: "#155c22ff",
+                fontSize: "12px",
+                fontFamily: "'Open Sans', sans-serif",
               }}
             >
-              Précédent
-            </Button>
-            <Button
-              variant="outlined"
+              Afrique
+            </Typography>
+            <IconButton
               size="small"
-              onClick={handleNextFromAfrica}
-              sx={{
-                borderRadius: "16px",
-                backgroundColor: "transparent",
-                borderColor: "#888",
-                color: "#444",
-                fontSize: "11px",
-                "&:hover": {
-                  backgroundColor: "rgba(0,0,0,0.05)",
-                  borderColor: "#555",
-                },
-              }}
+              onClick={() => setAfricaMinimized(!africaMinimized)}
+              sx={{ p: 0, color: "#155c22ff", ml: 1 }}
             >
-              Suivant
-            </Button>
+              {africaMinimized ? (
+                <InfoOutlinedIcon fontSize="small" />
+              ) : (
+                <ChevronRightIcon fontSize="small" />
+              )}
+            </IconButton>
           </Box>
+          
+          {!africaMinimized && (
+            <>
+              {percentageAfrica !== null ? (
+                <Typography variant="body2" sx={{ fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5 }}>
+                  <strong>{percentageAfrica.toFixed(0)}%</strong> des mentions dans
+                  les médias français concernent les <strong>54</strong> pays du
+                  continent africain.
+                </Typography>
+              ) : (
+                <Typography variant="body2" sx={{ color: "#888", fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5 }}>
+                  Calcul du pourcentage en cours...
+                </Typography>
+              )}
+              <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handlePrevFromAfrica}
+                  sx={{
+                    borderRadius: "16px",
+                    backgroundColor: "transparent",
+                    borderColor: "#888",
+                    color: "#444",
+                    fontSize: "11px",
+                    "&:hover": {
+                      backgroundColor: "rgba(0,0,0,0.05)",
+                      borderColor: "#555",
+                    },
+                  }}
+                >
+                  Précédent
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleNextFromAfrica}
+                  sx={{
+                    borderRadius: "16px",
+                    backgroundColor: "transparent",
+                    borderColor: "#888",
+                    color: "#444",
+                    fontSize: "11px",
+                    "&:hover": {
+                      backgroundColor: "rgba(0,0,0,0.05)",
+                      borderColor: "#555",
+                    },
+                  }}
+                >
+                  Suivant
+                </Button>
+              </Box>
+            </>
+          )}
         </Box>
       </Slide>
 
@@ -580,69 +622,88 @@ const MapToggle: React.FC<MapToggleProps> = ({
             fontSize: "11px",
             lineHeight: 1.3,
             fontFamily: "'Open Sans', sans-serif",
+            transition: "all 0.3s ease",
           }}
         >
-          <Typography
-            variant="subtitle2"
-            sx={{
-              fontWeight: "bold",
-              mb: 0,
-              color: "#aa1f62",
-              fontSize: "12px",
-              fontFamily: "'Open Sans', sans-serif",
-            }}
-          >
-            Inde
-          </Typography>
-          {percentageIndia !== null ? (
-            <Typography variant="body2" sx={{ fontSize: "11px", fontFamily: "'Open Sans', sans-serif" }}>
-              <strong>{percentageIndia.toFixed(0)}%</strong> des mentions
-              concernent l'Inde où vit <strong>18% de la population
-              mondiale.</strong> 
-            </Typography>
-          ) : (
-            <Typography variant="body2" sx={{ color: "#888", fontSize: "11px", fontFamily: "'Open Sans', sans-serif" }}>
-              Calcul du pourcentage en cours...
-            </Typography>
-          )}
-          <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={handlePrevFromIndia}
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Typography
+              variant="subtitle2"
               sx={{
-                borderRadius: "16px",
-                backgroundColor: "transparent",
-                borderColor: "#888",
-                color: "#444",
-                fontSize: "11px",
-                "&:hover": {
-                  backgroundColor: "rgba(0,0,0,0.05)",
-                  borderColor: "#555",
-                },
+                fontWeight: "bold",
+                mb: 0,
+                color: "#aa1f62",
+                fontSize: "12px",
+                fontFamily: "'Open Sans', sans-serif",
               }}
             >
-              Précédent
-            </Button>
-            <Button
-              variant="outlined"
+              Inde
+            </Typography>
+            <IconButton
               size="small"
-              onClick={handleNextFromIndia}
-              sx={{
-                borderRadius: "16px",
-                backgroundColor: "transparent",
-                borderColor: "#888",
-                color: "#444",
-                fontSize: "11px",
-                "&:hover": {
-                  backgroundColor: "rgba(0,0,0,0.05)",
-                  borderColor: "#555",
-                },
-              }}
+              onClick={() => setIndiaMinimized(!indiaMinimized)}
+              sx={{ p: 0, color: "#aa1f62", ml: 1 }}
             >
-              Suivant
-            </Button>
+              {indiaMinimized ? (
+                <InfoOutlinedIcon fontSize="small" />
+              ) : (
+                <ChevronRightIcon fontSize="small" />
+              )}
+            </IconButton>
           </Box>
+          
+          {!indiaMinimized && (
+            <>
+              {percentageIndia !== null ? (
+                <Typography variant="body2" sx={{ fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5 }}>
+                  <strong>{percentageIndia.toFixed(0)}%</strong> des mentions
+                  concernent l'Inde où vit <strong>18% de la population
+                  mondiale.</strong> 
+                </Typography>
+              ) : (
+                <Typography variant="body2" sx={{ color: "#888", fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5 }}>
+                  Calcul du pourcentage en cours...
+                </Typography>
+              )}
+              <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handlePrevFromIndia}
+                  sx={{
+                    borderRadius: "16px",
+                    backgroundColor: "transparent",
+                    borderColor: "#888",
+                    color: "#444",
+                    fontSize: "11px",
+                    "&:hover": {
+                      backgroundColor: "rgba(0,0,0,0.05)",
+                      borderColor: "#555",
+                    },
+                  }}
+                >
+                  Précédent
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleNextFromIndia}
+                  sx={{
+                    borderRadius: "16px",
+                    backgroundColor: "transparent",
+                    borderColor: "#888",
+                    color: "#444",
+                    fontSize: "11px",
+                    "&:hover": {
+                      backgroundColor: "rgba(0,0,0,0.05)",
+                      borderColor: "#555",
+                    },
+                  }}
+                >
+                  Suivant
+                </Button>
+              </Box>
+            </>
+          )}
         </Box>
       </Slide>
 
@@ -662,50 +723,69 @@ const MapToggle: React.FC<MapToggleProps> = ({
             fontSize: "11px",
             lineHeight: 1.3,
             fontFamily: "'Open Sans', sans-serif",
+            transition: "all 0.3s ease",
           }}
         >
-          <Typography
-            variant="subtitle2"
-            sx={{
-              fontWeight: "bold",
-              mb: 0,
-              color: "#d8a942ff",
-              fontSize: "12px",
-              fontFamily: "'Open Sans', sans-serif",
-            }}
-          >
-            Europe
-          </Typography>
-          {percentageEurope !== null ? (
-            <Typography variant="body2" sx={{ fontSize: "11px", fontFamily: "'Open Sans', sans-serif" }}>
-              <strong>{percentageEurope.toFixed(0)}%</strong> des mentions
-              concernent les pays européens. (France exclue)
-            </Typography>
-          ) : (
-            <Typography variant="body2" sx={{ color: "#888", fontSize: "11px", fontFamily: "'Open Sans', sans-serif" }}>
-              Calcul du pourcentage en cours...
-            </Typography>
-          )}
-          <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={handlePrevFromEurope}
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Typography
+              variant="subtitle2"
               sx={{
-                borderRadius: "16px",
-                backgroundColor: "transparent",
-                borderColor: "#888",
-                color: "#444",
-                fontSize: "11px",
-                "&:hover": {
-                  backgroundColor: "rgba(0,0,0,0.05)",
-                  borderColor: "#555",
-                },
+                fontWeight: "bold",
+                mb: 0,
+                color: "#d8a942ff",
+                fontSize: "12px",
+                fontFamily: "'Open Sans', sans-serif",
               }}
             >
-              Précédent
-            </Button>
+              Europe
+            </Typography>
+            <IconButton
+              size="small"
+              onClick={() => setEuropeMinimized(!europeMinimized)}
+              sx={{ p: 0, color: "#d8a942ff", ml: 1 }}
+            >
+              {europeMinimized ? (
+                <InfoOutlinedIcon fontSize="small" />
+              ) : (
+                <ChevronRightIcon fontSize="small" />
+              )}
+            </IconButton>
           </Box>
+          
+          {!europeMinimized && (
+            <>
+              {percentageEurope !== null ? (
+                <Typography variant="body2" sx={{ fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5 }}>
+                  <strong>{percentageEurope.toFixed(0)}%</strong> des mentions
+                  concernent les pays européens. (France exclue)
+                </Typography>
+              ) : (
+                <Typography variant="body2" sx={{ color: "#888", fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5 }}>
+                  Calcul du pourcentage en cours...
+                </Typography>
+              )}
+              <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handlePrevFromEurope}
+                  sx={{
+                    borderRadius: "16px",
+                    backgroundColor: "transparent",
+                    borderColor: "#888",
+                    color: "#444",
+                    fontSize: "11px",
+                    "&:hover": {
+                      backgroundColor: "rgba(0,0,0,0.05)",
+                      borderColor: "#555",
+                    },
+                  }}
+                >
+                  Précédent
+                </Button>
+              </Box>
+            </>
+          )}
         </Box>
       </Slide>
     </>
