@@ -164,11 +164,11 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls, onIndexChange }) => {
     const colorScale = d3.scaleThreshold<number, string>()
       .domain(thresholds)
       .range([
-        "#e9eff9",
-        "#c1d1ed",
-        "#7ea5d8",
-        "#448cca",
-        "#0471b0ff",
+           "#eff3ff",
+        "#bdd7e7",
+        "#6baed6",
+        "#3182bd",
+        "#08519c",
       ]);
 
     const fillColor = (d: any) => {

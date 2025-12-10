@@ -218,13 +218,13 @@ const MapToggle: React.FC<MapToggleProps> = ({
     bottom: "50%",
     left: "50%",
     transform: "translate(-50%, 50%)",
-    bgcolor: "rgba(255,255,255,0.9)",
+    bgcolor: "rgba(255,255,255,0.95)",
     px: 3,
     py: 1.5,
     borderRadius: 10,
     boxShadow: 3,
     fontSize: "13px",
-    color: "#333",
+    color: "#333 !important",
     fontFamily: "'Open Sans', sans-serif",
     animation: "pulse 1s ease-in-out infinite",
     "@keyframes pulse": {
@@ -233,9 +233,10 @@ const MapToggle: React.FC<MapToggleProps> = ({
       "100%": { opacity: 0.8 },
     },
     zIndex: 2000,
+    display: { xs: 'none', sm: 'block' },
   }}
 >
-  <strong>← Utilisez les flèches du clavier → pour naviguer</strong>
+  <strong style={{ color: '#333' }}>← Utilisez les flèches du clavier → pour naviguer</strong>
 </Box>
 
       )}
@@ -350,7 +351,7 @@ const MapToggle: React.FC<MapToggleProps> = ({
     right: 20,
     bgcolor: "white",
     p: minimized ? 1 : 2,   // <- padding réduit quand replié
-    borderRadius: 2,
+    borderRadius: 7,
     boxShadow: 3,
     zIndex: 1000,
     transition: "all 0.3s ease", // <- transition douce pour le repliage
@@ -402,18 +403,18 @@ const MapToggle: React.FC<MapToggleProps> = ({
         sx={{
           fontSize: "11px",
           lineHeight: 1.4,
-          color: "#444",
+          color: "#444 !important",
           mb: 1,
           fontFamily: "'Open Sans', sans-serif",
         }}
       >
         Cette carte illustre{" "}
-        <strong>
+        <strong style={{ color: '#444' }}>
           la vision du monde véhiculée par les médias français
         </strong>
         . Chaque pays y est redimensionné selon le nombre de fois où il
-        est cité dans la presse, dessinant une planète à l’échelle de
-        l’attention médiatique française.
+        est cité dans la presse, dessinant une planète à l'échelle de
+        l'attention médiatique française.
       </Typography>
     </Box>
   </Slide>
@@ -451,7 +452,7 @@ const MapToggle: React.FC<MapToggleProps> = ({
                 fontFamily: "'Open Sans', sans-serif",
               }}
             >
-              44 pays les plus vulnérables et les plus défavorisés
+              Les 44 pays les plus vulnérables et les plus défavorisés
             </Typography>
             <IconButton
               size="small"
@@ -469,14 +470,14 @@ const MapToggle: React.FC<MapToggleProps> = ({
           {!pmaMinimized && (
             <>
               {percentagePMA !== null ? (
-                <Typography variant="body2" sx={{ fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5 }}>
-                  Les <strong>44 pays les plus vulnérables</strong>, où se concentrent pourtant les
+                <Typography variant="body2" sx={{ fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5, color: "#333 !important" }}>
+                  Les <strong style={{ color: '#333' }}>44 pays les plus vulnérables</strong>, où se concentrent pourtant les
                   principaux défis du développement, ne représentent que{" "}
-                  <strong>{percentagePMA.toFixed(0)}%</strong> des pays mentionnés
-                  dans les <strong>médias français</strong>.<br />Source : Classification des Nations unies des pays les moins avancés.
+                  <strong style={{ color: '#333' }}>{percentagePMA.toFixed(0)}%</strong> des pays mentionnés
+                  dans les <strong style={{ color: '#333' }}>médias français</strong>.<br />Source : Classification des Nations unies des pays les moins avancés.
                 </Typography>
               ) : (
-                <Typography variant="body2" sx={{ color: "#888", fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5 }}>
+                <Typography variant="body2" sx={{ color: "#888 !important", fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5 }}>
                   Calcul du pourcentage en cours...
                 </Typography>
               )}
@@ -553,13 +554,13 @@ const MapToggle: React.FC<MapToggleProps> = ({
           {!africaMinimized && (
             <>
               {percentageAfrica !== null ? (
-                <Typography variant="body2" sx={{ fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5 }}>
-                  <strong>{percentageAfrica.toFixed(0)}%</strong> des mentions dans
-                  les médias français concernent les <strong>54</strong> pays du
+                <Typography variant="body2" sx={{ fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5, color: "#333 !important" }}>
+                  <strong style={{ color: '#333' }}>{percentageAfrica.toFixed(0)}%</strong> des mentions dans
+                  les médias français concernent les <strong style={{ color: '#333' }}>54</strong> pays du
                   continent africain.
                 </Typography>
               ) : (
-                <Typography variant="body2" sx={{ color: "#888", fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5 }}>
+                <Typography variant="body2" sx={{ color: "#888 !important", fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5 }}>
                   Calcul du pourcentage en cours...
                 </Typography>
               )}
@@ -654,13 +655,13 @@ const MapToggle: React.FC<MapToggleProps> = ({
           {!indiaMinimized && (
             <>
               {percentageIndia !== null ? (
-                <Typography variant="body2" sx={{ fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5 }}>
-                  <strong>{percentageIndia.toFixed(0)}%</strong> des mentions
-                  concernent l'Inde où vit <strong>18% de la population
+                <Typography variant="body2" sx={{ fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5, color: "#333 !important" }}>
+                  <strong style={{ color: '#333' }}>{percentageIndia.toFixed(0)}%</strong> des mentions
+                  concernent l'Inde où vit <strong style={{ color: '#333' }}>18% de la population
                   mondiale.</strong> 
                 </Typography>
               ) : (
-                <Typography variant="body2" sx={{ color: "#888", fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5 }}>
+                <Typography variant="body2" sx={{ color: "#888 !important", fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5 }}>
                   Calcul du pourcentage en cours...
                 </Typography>
               )}
@@ -755,12 +756,12 @@ const MapToggle: React.FC<MapToggleProps> = ({
           {!europeMinimized && (
             <>
               {percentageEurope !== null ? (
-                <Typography variant="body2" sx={{ fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5 }}>
-                  <strong>{percentageEurope.toFixed(0)}%</strong> des mentions
+                <Typography variant="body2" sx={{ fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5, color: "#333 !important" }}>
+                  <strong style={{ color: '#333' }}>{percentageEurope.toFixed(0)}%</strong> des mentions
                   concernent les pays européens. (France exclue)
                 </Typography>
               ) : (
-                <Typography variant="body2" sx={{ color: "#888", fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5 }}>
+                <Typography variant="body2" sx={{ color: "#888 !important", fontSize: "11px", fontFamily: "'Open Sans', sans-serif", mt: 0.5 }}>
                   Calcul du pourcentage en cours...
                 </Typography>
               )}
