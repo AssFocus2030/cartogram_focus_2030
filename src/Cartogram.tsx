@@ -126,13 +126,13 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls, onIndexChange }) => {
     );
     const path = d3.geoPath().projection(projection);
 
-    // --- Crée le fond blanc une seule fois ---
+    // --- Crée le fond transparent une seule fois ---
     if (svg.selectAll(".background").empty()) {
       svg.append("rect")
         .attr("class", "background")
         .attr("width", width)
         .attr("height", height)
-        .attr("fill", "#ffffffff");
+        .attr("fill", "transparent");
     }
 
     // --- Configuration du zoom ---
@@ -186,7 +186,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls, onIndexChange }) => {
       showPMA && PMACountriesISO_A3.includes(d.properties.ADM0_A3)
         ? "#e05a55ff"
         : showAfrica && africanISO_A3.includes(d.properties.ADM0_A3)
-        ? "#5e9256ff"
+        ? "#3c912fff"
         : showIndia && d.properties.ADM0_A3 === INDIA_A3
         ? "#ba5887ff"
         : showEurope && EUROPE_A3.includes(d.properties.ADM0_A3)
@@ -243,8 +243,27 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls, onIndexChange }) => {
         
         targetGroup.selectAll("path.geo").remove();
         
+        // Séparer les pays normaux et les pays spéciaux pour l'ordre de rendu
+        const normalCountries = targetData.features.filter((d: any) => {
+          const isSpecial = (showPMA && PMACountriesISO_A3.includes(d.properties.ADM0_A3)) ||
+            (showAfrica && africanISO_A3.includes(d.properties.ADM0_A3)) ||
+            (showIndia && d.properties.ADM0_A3 === INDIA_A3) ||
+            (showEurope && EUROPE_A3.includes(d.properties.ADM0_A3));
+          return !isSpecial;
+        });
+        
+        const specialCountries = targetData.features.filter((d: any) => {
+          return (showPMA && PMACountriesISO_A3.includes(d.properties.ADM0_A3)) ||
+            (showAfrica && africanISO_A3.includes(d.properties.ADM0_A3)) ||
+            (showIndia && d.properties.ADM0_A3 === INDIA_A3) ||
+            (showEurope && EUROPE_A3.includes(d.properties.ADM0_A3));
+        });
+        
+        // Dessiner d'abord les pays normaux, puis les pays spéciaux
+        const orderedFeatures = [...normalCountries, ...specialCountries];
+        
         const countries = targetGroup.selectAll("path.geo")
-          .data(targetData.features, (d: any) => d.properties._globalIndex)
+          .data(orderedFeatures, (d: any) => d.properties._globalIndex)
           .join("path")
           .attr("class", "geo")
           .attr("d", pathGen as any)
@@ -588,7 +607,25 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls, onIndexChange }) => {
     const handleResize = () => drawMap(false);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [geoData, currentIndex, baseProjection, zoomTransform]);
+  }, [geoData, currentIndex, baseProjection]);
+
+  // Mettre à jour seulement la transformation du zoom sans redessiner
+  useEffect(() => {
+    if (geoData.length === 0) return;
+    const svg = d3.select(svgRef.current);
+    
+    if (geoData.length === 2) {
+      svg.select(".zoom-group-0").attr("transform", zoomTransform.toString());
+      svg.select(".zoom-group-1").attr("transform", zoomTransform.toString());
+      
+      // Mettre à jour la position du wipe pour qu'il reste synchronisé
+      const width = svgRef.current?.clientWidth || window.innerWidth;
+      const xPosition = wipePosition.current * width;
+      updateWipeClip(xPosition);
+    } else {
+      svg.select(".zoom-group").attr("transform", zoomTransform.toString());
+    }
+  }, [zoomTransform]);
 
   useEffect(() => drawMap(true), [showPMA, showAfrica, showIndia, showEurope]);
 

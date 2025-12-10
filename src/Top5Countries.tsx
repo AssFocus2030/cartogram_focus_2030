@@ -118,7 +118,7 @@ const Top5Countries: React.FC<Top5CountriesProps> = ({ geoData, onClose }) => {
       >
       {/* Header */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0.5 }}>
-        <Typography variant="h6" sx={{ fontWeight: 600, color: "#2383c4", fontFamily: "'Open Sans', sans-serif", fontSize: "15px" }}>
+        <Typography variant="h6" sx={{ fontWeight: 600, color: "#2383c4 !important", fontFamily: "'Open Sans', sans-serif", fontSize: "15px" }}>
           Top 5 des pays
         </Typography>
         <IconButton onClick={handleClose} size="small">
@@ -138,7 +138,7 @@ const Top5Countries: React.FC<Top5CountriesProps> = ({ geoData, onClose }) => {
               cursor: "pointer",
               borderBottom: "3px solid",
               borderColor: selectedPanel === "top" ? "#2383c4" : "transparent",
-              color: selectedPanel === "top" ? "#2383c4" : "#666",
+              color: selectedPanel === "top" ? "#2383c4 !important" : "#666 !important",
               fontWeight: selectedPanel === "top" ? 600 : 500,
               fontSize: "12px",
               fontFamily: "'Open Sans', sans-serif",
@@ -160,7 +160,7 @@ const Top5Countries: React.FC<Top5CountriesProps> = ({ geoData, onClose }) => {
               cursor: "pointer",
               borderBottom: "3px solid",
               borderColor: selectedPanel === "bottom" ? "#e05a55" : "transparent",
-              color: selectedPanel === "bottom" ? "#e05a55" : "#666",
+              color: selectedPanel === "bottom" ? "#e05a55 !important" : "#666 !important",
               fontWeight: selectedPanel === "bottom" ? 600 : 500,
               fontSize: "12px",
               fontFamily: "'Open Sans', sans-serif",
@@ -199,7 +199,7 @@ const Top5Countries: React.FC<Top5CountriesProps> = ({ geoData, onClose }) => {
                 sx={{
                   fontWeight: 700,
                   fontSize: "16px",
-                  color: index === 0 && selectedPanel === "top" ? "#2383c4" : "#666",
+                  color: index === 0 && selectedPanel === "top" ? "#2383c4 !important" : "#666 !important",
                   minWidth: 20,
                   fontFamily: "'Open Sans', sans-serif",
                 }}
@@ -210,6 +210,7 @@ const Top5Countries: React.FC<Top5CountriesProps> = ({ geoData, onClose }) => {
                 sx={{
                   fontWeight: 500,
                   fontSize: "13px",
+                  color: "#333 !important",
                   fontFamily: "'Open Sans', sans-serif",
                 }}
               >
@@ -220,7 +221,7 @@ const Top5Countries: React.FC<Top5CountriesProps> = ({ geoData, onClose }) => {
               sx={{
                 fontWeight: 600,
                 fontSize: "13px",
-                color: selectedPanel === "bottom" ? "#e05a55" : "#2383c4",
+                color: selectedPanel === "bottom" ? "#e05a55 !important" : "#2383c4 !important",
                 fontFamily: "'Open Sans', sans-serif",
               }}
             >

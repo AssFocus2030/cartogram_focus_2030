@@ -110,18 +110,24 @@ const CountryChart: React.FC<CountryChartProps> = ({
       ) : (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: -10 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" tick={{ fontSize: 11, fontFamily: "'Open Sans', sans-serif" }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+            <XAxis 
+              dataKey="month" 
+              tick={{ fontSize: 11, fontFamily: "'Open Sans', sans-serif", fill: "#333" }} 
+            />
             <YAxis 
-              tick={{ fontSize: 11, fontFamily: "'Open Sans', sans-serif" }} 
+              tick={{ fontSize: 11, fontFamily: "'Open Sans', sans-serif", fill: "#333" }} 
               domain={[0, yAxisMax]} 
               tickFormatter={(value) => `${value}%`}
             />
             <Tooltip
-              formatter={(value: number) => `${value.toFixed(2)}%`}
-              labelFormatter={() => "Part dans le total des mentions"}
+              formatter={(value: number) => [`${value.toFixed(2)}%`, 'Valeur']}
+              labelFormatter={() => "Part dans le total des mentions :"}
+              contentStyle={{ backgroundColor: 'white', border: '1px solid #ccc', color: '#333' }}
+              labelStyle={{ color: '#333' }}
+              itemStyle={{ color: '#333' }}
             />
-            <Bar dataKey="value" fill="#2383c4" />
+            <Bar dataKey="value" fill="#3182bd" />
           </BarChart>
         </ResponsiveContainer>
       )}
