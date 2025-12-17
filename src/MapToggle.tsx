@@ -413,7 +413,7 @@ const MapToggle: React.FC<MapToggleProps> = ({
           la vision du monde véhiculée par les médias français
         </strong>
         . Chaque pays y est redimensionné selon le nombre de fois où il
-        est cité dans la presse, dessinant une planète à l'échelle de
+        est cité dans les médias français, dessinant une planète à l'échelle de
         l'attention médiatique française.
       </Typography>
     </Box>

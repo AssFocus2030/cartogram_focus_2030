@@ -248,7 +248,7 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls, onIndexChange }) => {
           const isSpecial = (showPMA && PMACountriesISO_A3.includes(d.properties.ADM0_A3)) ||
             (showAfrica && africanISO_A3.includes(d.properties.ADM0_A3)) ||
             (showIndia && d.properties.ADM0_A3 === INDIA_A3) ||
-            (showEurope && EUROPE_A3.includes(d.properties.ADM0_A3));
+            (showEurope && EUROPE_A3.includes((d as any).properties.ADM0_A3));
           return !isSpecial;
         });
         
@@ -285,12 +285,13 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls, onIndexChange }) => {
                 (showEurope && EUROPE_A3.includes(d.properties.ADM0_A3));
               return isHighlighted ? highlightStrokeWidth : baseStrokeWidth;
             })
-            .attr("filter", (d: any) => {
+            .attr("filter", (d) => {
+              const country = d as { properties: { ADM0_A3: string } };
               if (
-                (showPMA && PMACountriesISO_A3.includes(d.properties.ADM0_A3)) ||
-                (showAfrica && africanISO_A3.includes(d.properties.ADM0_A3)) ||
-                (showIndia && d.properties.ADM0_A3 === INDIA_A3) ||
-                (showEurope && EUROPE_A3.includes(d.properties.ADM0_A3))
+                (showPMA && PMACountriesISO_A3.includes(country.properties.ADM0_A3)) ||
+                (showAfrica && africanISO_A3.includes(country.properties.ADM0_A3)) ||
+                (showIndia && country.properties.ADM0_A3 === INDIA_A3) ||
+                (showEurope && EUROPE_A3.includes(country.properties.ADM0_A3))
               ) return "url(#inner-glow)";
               return null;
             });
@@ -613,17 +614,50 @@ const Cartogram: React.FC<CartogramProps> = ({ geoUrls, onIndexChange }) => {
   useEffect(() => {
     if (geoData.length === 0) return;
     const svg = d3.select(svgRef.current);
-    
+    const currentScale = zoomTransform.k;
+    const baseStrokeWidth = 1 / currentScale;
+    const highlightStrokeWidth = 1 / currentScale;
+
     if (geoData.length === 2) {
       svg.select(".zoom-group-0").attr("transform", zoomTransform.toString());
       svg.select(".zoom-group-1").attr("transform", zoomTransform.toString());
-      
+
+      // Mettre à jour l'épaisseur des contours pour chaque groupe
+      svg.selectAll(".zoom-group-0 path.geo")
+        .attr("stroke-width", function(d) {
+          const country = d as any;
+          const isHighlighted =
+            (showPMA && PMACountriesISO_A3.includes(country.properties.ADM0_A3)) ||
+            (showAfrica && africanISO_A3.includes(country.properties.ADM0_A3)) ||
+            (showIndia && country.properties.ADM0_A3 === INDIA_A3) ||
+            (showEurope && EUROPE_A3.includes(country.properties.ADM0_A3));
+          return isHighlighted ? highlightStrokeWidth : baseStrokeWidth;
+        });
+      svg.selectAll(".zoom-group-1 path.geo")
+        .attr("stroke-width", function(d: any) {
+          const isHighlighted =
+            (showPMA && PMACountriesISO_A3.includes(d.properties.ADM0_A3)) ||
+            (showAfrica && africanISO_A3.includes(d.properties.ADM0_A3)) ||
+            (showIndia && d.properties.ADM0_A3 === INDIA_A3) ||
+            (showEurope && EUROPE_A3.includes(d.properties.ADM0_A3));
+          return isHighlighted ? highlightStrokeWidth : baseStrokeWidth;
+        });
+
       // Mettre à jour la position du wipe pour qu'il reste synchronisé
       const width = svgRef.current?.clientWidth || window.innerWidth;
       const xPosition = wipePosition.current * width;
       updateWipeClip(xPosition);
     } else {
       svg.select(".zoom-group").attr("transform", zoomTransform.toString());
+      svg.selectAll(".zoom-group path.geo")
+        .attr("stroke-width", function(d: any) {
+          const isHighlighted =
+            (showPMA && PMACountriesISO_A3.includes(d.properties.ADM0_A3)) ||
+            (showAfrica && africanISO_A3.includes(d.properties.ADM0_A3)) ||
+            (showIndia && d.properties.ADM0_A3 === INDIA_A3) ||
+            (showEurope && EUROPE_A3.includes(d.properties.ADM0_A3));
+          return isHighlighted ? highlightStrokeWidth : baseStrokeWidth;
+        });
     }
   }, [zoomTransform]);
 
